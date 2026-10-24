@@ -1,0 +1,9 @@
+bin/
+tmp/
+.env
+web/node_modules/
+web/build/
+web/.svelte-kit/
+.DS_Store
+*.exe
+coverage.out

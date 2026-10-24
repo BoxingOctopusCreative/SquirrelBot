@@ -1,0 +1,4 @@
+ALTER TABLE role_gates
+    ADD COLUMN emoji TEXT NOT NULL DEFAULT '',
+    ADD COLUMN channel_id TEXT NOT NULL DEFAULT '',
+    ADD COLUMN message_id TEXT NOT NULL DEFAULT '';

@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: squirrelbot
+      POSTGRES_PASSWORD: squirrelbot
+      POSTGRES_DB: squirrelbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg:/var/lib/postgresql/data
+  squirrelbot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://squirrelbot:squirrelbot@postgres:5432/squirrelbot?sslmode=disable
+      WEB_DIR: /web/build
+      HTTP_ADDR: ":8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  pg:

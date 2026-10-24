@@ -1,0 +1,6 @@
+SquirrelBot is a single replica. The Discord gateway rejects a second session for the same bot token, so this chart sets replicas to 1 and uses the Recreate strategy.
+
+Open {{ .Values.publicUrl }} after the pod is Ready.
+The dashboard redirect URI is {{ .Values.publicUrl }}/auth/discord/callback.
+
+Enable the Server Members and Message Content intents on the bot, and place the bot's role above every role it assigns.

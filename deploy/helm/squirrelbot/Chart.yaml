@@ -1,0 +1,6 @@
+apiVersion: v2
+name: squirrelbot
+description: Discord moderation bot and admin dashboard
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,56 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: squirrelbot
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# The Discord gateway allows one session per bot token. The Deployment
+# hardcodes replicas to 1 and uses Recreate. Do not scale this chart.
+
+service:
+  port: 8080
+
+publicUrl: ""
+
+existingSecret: ""
+
+secrets:
+  databaseUrl: ""
+  discordToken: ""
+  discordClientId: ""
+  discordClientSecret: ""
+  sessionSecret: ""
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+  tls: false
+  tlsSecretName: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+postgres:
+  enabled: false
+  image: postgres:16-alpine
+  auth:
+    database: squirrelbot
+    username: squirrelbot
+    password: ""
+  persistence:
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
