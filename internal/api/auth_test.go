@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -25,6 +26,14 @@ func TestDiscordAuthorizeInvitesManagedServers(t *testing.T) {
 	}
 	if query.Get("permissions") != botInvitePermissions {
 		t.Fatalf("permissions %q", query.Get("permissions"))
+	}
+	bits, err := strconv.ParseInt(botInvitePermissions, 10, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const changeNickname int64 = 1 << 26
+	if bits&changeNickname == 0 {
+		t.Fatal("invite is missing Change Nickname")
 	}
 	if query.Get("integration_type") != "0" {
 		t.Fatalf("integration_type %q", query.Get("integration_type"))

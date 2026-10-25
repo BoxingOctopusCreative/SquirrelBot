@@ -12,7 +12,7 @@
 </script>
 
 <header class="topbar">
-	<a class="brand" href="/app"><Mark size={22} /> SquirrelBot</a>
+	<a class="brand" href="/app"><img src="/squirrelbot_brandkit_wide.svg" alt="SquirrelBot" width="240" /></a>
 	<div class="who">
 		<a class="button quiet" href="/auth/discord">Add a server</a>
 		{#if data.me.avatarUrl}<img class="avatar" src={data.me.avatarUrl} alt="" />{/if}

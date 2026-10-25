@@ -8,9 +8,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/BoxingOctopus/squirrelbot/internal/discord"
 	"github.com/BoxingOctopus/squirrelbot/internal/domain"
+	"github.com/BoxingOctopus/squirrelbot/internal/script"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
 	"github.com/bwmarrin/discordgo"
 	"github.com/gofiber/fiber/v2"
@@ -30,9 +32,16 @@ type roleDTO struct {
 	Created  bool   `json:"created,omitempty"`
 }
 
+type emojiDTO struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Animated bool   `json:"animated"`
+}
+
 type metaEntry struct {
 	channels []channelDTO
 	roles    []roleDTO
+	emojis   []emojiDTO
 	exp      time.Time
 }
 
@@ -60,7 +69,7 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load this server.")
 	}
-	channels, roles, err := s.guildMeta(guildID)
+	channels, roles, emojis, err := s.guildMeta(guildID)
 	if err != nil {
 		s.log.Warn("discord metadata", "guild", guildID, "err", err)
 	}
@@ -86,29 +95,29 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{
 		"guild": guild, "counts": counts, "nextKick": nextKick,
-		"channels": channels, "roles": roles, "gate": gate, "automod": automod,
+		"channels": channels, "roles": roles, "emojis": emojis, "gate": gate, "automod": automod,
 		"logging": logs, "escalationRoles": escalationRoles, "starboard": starboard,
 	})
 }
 
-func (s *Server) guildMeta(guildID string) ([]channelDTO, []roleDTO, error) {
+func (s *Server) guildMeta(guildID string) ([]channelDTO, []roleDTO, []emojiDTO, error) {
 	s.meta.mu.Lock()
 	if entry, ok := s.meta.items[guildID]; ok && time.Now().Before(entry.exp) {
 		s.meta.mu.Unlock()
-		return entry.channels, entry.roles, nil
+		return entry.channels, entry.roles, entry.emojis, nil
 	}
 	s.meta.mu.Unlock()
 	if s.bot == nil || !s.bot.Ready() {
-		return []channelDTO{}, []roleDTO{}, errors.New("bot is not connected")
+		return []channelDTO{}, []roleDTO{}, []emojiDTO{}, errors.New("bot is not connected")
 	}
 	session := s.bot.Session()
 	rawChannels, err := session.GuildChannels(guildID)
 	if err != nil {
-		return []channelDTO{}, []roleDTO{}, err
+		return []channelDTO{}, []roleDTO{}, []emojiDTO{}, err
 	}
 	rawRoles, err := session.GuildRoles(guildID)
 	if err != nil {
-		return []channelDTO{}, []roleDTO{}, err
+		return []channelDTO{}, []roleDTO{}, []emojiDTO{}, err
 	}
 	channels := []channelDTO{}
 	for _, channel := range rawChannels {
@@ -126,10 +135,22 @@ func (s *Server) guildMeta(guildID string) ([]channelDTO, []roleDTO, error) {
 		roles = append(roles, roleDTO{ID: role.ID, Name: role.Name, Position: role.Position, Managed: role.Managed})
 	}
 	sort.Slice(roles, func(i, j int) bool { return roles[i].Position > roles[j].Position })
+	emojis := []emojiDTO{}
+	rawEmojis, err := session.GuildEmojis(guildID)
+	if err != nil {
+		s.log.Warn("guild emojis", "guild", guildID, "err", err)
+	}
+	for _, emoji := range rawEmojis {
+		if emoji == nil || emoji.ID == "" || emoji.Name == "" {
+			continue
+		}
+		emojis = append(emojis, emojiDTO{ID: emoji.ID, Name: emoji.Name, Animated: emoji.Animated})
+	}
+	sort.Slice(emojis, func(i, j int) bool { return emojis[i].Name < emojis[j].Name })
 	s.meta.mu.Lock()
-	s.meta.items[guildID] = metaEntry{channels: channels, roles: roles, exp: time.Now().Add(30 * time.Second)}
+	s.meta.items[guildID] = metaEntry{channels: channels, roles: roles, emojis: emojis, exp: time.Now().Add(30 * time.Second)}
 	s.meta.mu.Unlock()
-	return channels, roles, nil
+	return channels, roles, emojis, nil
 }
 
 func (s *Server) forgetGuildMeta(guildID string) {
@@ -536,7 +557,12 @@ func (s *Server) putStarboard(c *fiber.Ctx) error {
 	if board.IgnoredChannelIDs == nil {
 		board.IgnoredChannelIDs = []string{}
 	}
-	if err := domain.ValidateStarboard(board.Enabled, board.ChannelID, board.Threshold, board.IgnoredChannelIDs); err != nil {
+	emoji, err := domain.CleanStarEmoji(board.Emoji)
+	if err != nil {
+		return fail(c, fiber.StatusBadRequest, err.Error())
+	}
+	board.Emoji = emoji
+	if err := domain.ValidateStarboard(board.Enabled, board.ChannelID, board.Emoji, board.Threshold, board.IgnoredChannelIDs); err != nil {
 		return fail(c, fiber.StatusBadRequest, err.Error())
 	}
 	if err := s.store.SaveStarboard(c.UserContext(), board); err != nil {
@@ -916,16 +942,79 @@ func (s *Server) saveCommand(c *fiber.Ctx) error {
 	body.GuildID = c.Params("guildID")
 	body.Name = strings.ToLower(strings.TrimSpace(body.Name))
 	body.Response = strings.TrimSpace(body.Response)
+	body.Kind = script.KindLua
 	if !domain.ValidCommandName(body.Name) {
 		return fail(c, fiber.StatusBadRequest, "Command names use lowercase letters, numbers, _ or -.")
 	}
-	if body.Response == "" || len(body.Response) > domain.MaxCustomResponse {
-		return fail(c, fiber.StatusBadRequest, "Write a response, up to 1500 characters.")
+	if body.Response == "" || utf8.RuneCountInString(body.Response) > domain.MaxCommandSource {
+		return fail(c, fiber.StatusBadRequest, "Write a script, up to 8000 characters.")
 	}
+	if err := script.Compile(body.Response); err != nil {
+		return fail(c, fiber.StatusBadRequest, "That script has a syntax error. "+script.ErrorText(err))
+	}
+	roleIDs, err := s.checkedCommandRoles(c.Params("guildID"), body.RoleIDs)
+	if err != nil {
+		return fail(c, commandRoleStatus(err), err.Error())
+	}
+	body.RoleIDs = roleIDs
 	if err := s.store.SaveCommand(c.UserContext(), body); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save that command.")
 	}
 	return c.Status(fiber.StatusCreated).JSON(body)
+}
+
+func (s *Server) checkedCommandRoles(guildID string, ids []string) ([]string, error) {
+	if len(ids) > domain.MaxCommandRoles {
+		return nil, errors.New("Choose at most 10 roles.")
+	}
+	if len(ids) == 0 {
+		return []string{}, nil
+	}
+	if err := s.requireBot(); err != nil {
+		return nil, err
+	}
+	raw, err := s.bot.Session().GuildRoles(guildID)
+	if err != nil {
+		return nil, errors.New("Discord did not return roles.")
+	}
+	byID := make(map[string]*discordgo.Role, len(raw))
+	for _, role := range raw {
+		if role != nil {
+			byID[role.ID] = role
+		}
+	}
+	out := make([]string, 0, len(ids))
+	seen := map[string]bool{}
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		if !domain.ValidSnowflake(id) || id == guildID {
+			return nil, errors.New("Choose a role from this server.")
+		}
+		role := byID[id]
+		if role == nil {
+			return nil, errors.New("Choose a role from this server.")
+		}
+		if role.Managed {
+			return nil, errors.New("That role is managed by an integration.")
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+func commandRoleStatus(err error) int {
+	switch err.Error() {
+	case "The bot is still connecting to Discord.":
+		return fiber.StatusServiceUnavailable
+	case "Discord did not return roles.":
+		return fiber.StatusBadGateway
+	default:
+		return fiber.StatusBadRequest
+	}
 }
 
 func (s *Server) deleteCommand(c *fiber.Ctx) error {

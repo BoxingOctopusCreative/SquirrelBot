@@ -1,0 +1,2 @@
+ALTER TABLE starboards
+    ADD COLUMN emoji TEXT NOT NULL DEFAULT '⭐';

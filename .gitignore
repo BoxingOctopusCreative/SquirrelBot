@@ -4,6 +4,9 @@ tmp/
 web/node_modules/
 web/build/
 web/.svelte-kit/
+web/test-results/
+web/playwright-report/
+web/blob-report/
 .DS_Store
 *.exe
 coverage.out

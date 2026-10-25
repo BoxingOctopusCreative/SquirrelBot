@@ -83,6 +83,10 @@ func (b *Bot) Close() error { return b.session.Close() }
 
 func (b *Bot) Ready() bool { return b.ready.Load() }
 
+// SetReady records whether the gateway is connected.
+// The ready event sets this during a normal run. Tests set it when Discord is stubbed.
+func (b *Bot) SetReady(ready bool) { b.ready.Store(ready) }
+
 func (b *Bot) Session() *discordgo.Session { return b.session }
 
 func (b *Bot) registerCommands(s *discordgo.Session, appID string) error {

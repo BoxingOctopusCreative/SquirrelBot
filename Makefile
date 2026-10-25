@@ -1,20 +1,23 @@
 IMAGE ?= squirrelbot:0.1.0
+CONTAINER ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
+COMPOSE = $(CONTAINER) compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev bot web db up down build build-bot build-web image test
+.PHONY: help dev bot web db up down build build-bot build-web image test test-e2e
 
 help:
 	@printf '%s\n' \
 		'dev          Postgres, Air, and the dashboard' \
 		'bot          Air only' \
 		'web          Dashboard dev server' \
-		'db           Postgres in Docker' \
-		'up           Bot and Postgres in Docker' \
-		'down         Stop the Docker services' \
+		'db           Postgres via $(CONTAINER)' \
+		'up           Bot and Postgres via $(CONTAINER)' \
+		'down         Stop $(CONTAINER) compose services' \
 		'build        Local bot binary and dashboard' \
 		'image        Container image ($(IMAGE))' \
-		'test         Go tests'
+		'test         Go unit tests' \
+		'test-e2e     API and dashboard end-to-end tests'
 
 dev: db web/node_modules
 	@test -f .env || { echo 'Copy .env.example to .env and fill it in.' >&2; exit 1; }
@@ -31,13 +34,13 @@ web: web/node_modules
 	npm --prefix web run dev
 
 db:
-	docker compose up postgres -d
+	$(COMPOSE) up postgres -d
 
 up:
-	docker compose up --build
+	$(COMPOSE) up --build
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
 build: build-bot build-web
 
@@ -48,10 +51,15 @@ build-web: web/node_modules
 	npm --prefix web run build
 
 image:
-	docker build -t $(IMAGE) .
+	$(CONTAINER) build -t $(IMAGE) .
 
 test:
 	go test ./...
+
+test-e2e: web/node_modules
+	go test -tags e2e -count=1 ./e2e
+	npm --prefix web exec playwright install chromium
+	npm --prefix web run e2e
 
 web/node_modules: web/package.json web/package-lock.json
 	npm --prefix web ci

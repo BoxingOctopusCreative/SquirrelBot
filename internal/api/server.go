@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,7 +52,7 @@ func New(cfg config.Config, st *store.Store, bot *discord.Bot, log *slog.Logger)
 		meta:   newMetaCache(),
 	}
 	s.app = fiber.New(fiber.Config{
-		BodyLimit:             1 << 20,
+		BodyLimit:             2 << 20,
 		DisableStartupMessage: true,
 		ServerHeader:          "squirrelbot",
 		ErrorHandler:          s.handleError,
@@ -62,6 +63,16 @@ func New(cfg config.Config, st *store.Store, bot *discord.Bot, log *slog.Logger)
 }
 
 func (s *Server) Listen() error { return s.app.Listen(s.cfg.HTTPAddr) }
+
+// Serve accepts connections on ln until Shutdown.
+func (s *Server) Serve(ln net.Listener) error { return s.app.Listener(ln) }
+
+// SetHTTPClient replaces the client used for Discord OAuth and the signed-in user's servers.
+func (s *Server) SetHTTPClient(client *http.Client) {
+	if client != nil {
+		s.client = client
+	}
+}
 
 func (s *Server) Shutdown() error {
 	return s.app.ShutdownWithTimeout(10 * time.Second)
@@ -101,6 +112,8 @@ func (s *Server) routes() {
 	api.Get("/guilds", s.guilds)
 	guild := api.Group("/guilds/:guildID", s.requireGuild)
 	guild.Get("/", s.bundle)
+	guild.Get("/profile", s.guildProfile)
+	guild.Put("/profile", s.putGuildProfile)
 	guild.Patch("/", s.patchSettings)
 	guild.Get("/cases", s.cases)
 	guild.Get("/announcements", s.announcements)
@@ -169,7 +182,7 @@ func fail(c *fiber.Ctx, status int, message string) error {
 }
 
 func contentSecurityPolicy(webDir string) string {
-	policy := "default-src 'self'; img-src 'self' https://cdn.discordapp.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	policy := "default-src 'self'; img-src 'self' https://cdn.discordapp.com data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	body, err := os.ReadFile(filepath.Join(webDir, "200.html"))
 	if err != nil {
 		return policy

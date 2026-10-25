@@ -88,10 +88,17 @@ export type Starboard = {
 	guildId: string;
 	enabled: boolean;
 	channelId: string;
+	emoji: string;
 	threshold: number;
 	selfStar: boolean;
 	nsfw: boolean;
 	ignoredChannelIds: string[];
+};
+
+export type GuildEmoji = {
+	id: string;
+	name: string;
+	animated: boolean;
 };
 
 export type Bundle = {
@@ -100,6 +107,7 @@ export type Bundle = {
 	nextKick: string | null;
 	channels: Channel[];
 	roles: Role[];
+	emojis: GuildEmoji[];
 	gate: Gate;
 	automod: Automod;
 	logging: LogConfig;
@@ -171,6 +179,16 @@ export type ReactionRole = {
 export type CustomCommand = {
 	name: string;
 	response: string;
+	kind: string;
+	roleIds: string[];
+};
+
+export type BotProfile = {
+	nick: string;
+	username: string;
+	avatarUrl: string;
+	defaultAvatarUrl: string;
+	customAvatar: boolean;
 };
 
 export type MemberHit = {

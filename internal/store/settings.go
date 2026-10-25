@@ -232,14 +232,26 @@ func (s *Store) DeleteReactionRole(ctx context.Context, guildID string, id int64
 }
 
 type CustomCommand struct {
-	GuildID  string `json:"guildId"`
-	Name     string `json:"name"`
-	Response string `json:"response"`
+	GuildID  string   `json:"guildId"`
+	Name     string   `json:"name"`
+	Response string   `json:"response"`
+	Kind     string   `json:"kind"`
+	RoleIDs  []string `json:"roleIds"`
+}
+
+func scanCommand(guildID, name, response, kind string, roles []string) CustomCommand {
+	if roles == nil {
+		roles = []string{}
+	}
+	if kind == "" {
+		kind = "text"
+	}
+	return CustomCommand{GuildID: guildID, Name: name, Response: response, Kind: kind, RoleIDs: roles}
 }
 
 func (s *Store) ListCommands(ctx context.Context, guildID string) ([]CustomCommand, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT guild_id, name, response FROM custom_commands
+		SELECT guild_id, name, response, kind, role_ids FROM custom_commands
 		WHERE guild_id = $1 ORDER BY name`, guildID)
 	if err != nil {
 		return nil, err
@@ -247,32 +259,46 @@ func (s *Store) ListCommands(ctx context.Context, guildID string) ([]CustomComma
 	defer rows.Close()
 	out := []CustomCommand{}
 	for rows.Next() {
-		var cmd CustomCommand
-		if err := rows.Scan(&cmd.GuildID, &cmd.Name, &cmd.Response); err != nil {
+		var guild, name, response, kind string
+		var roles []string
+		if err := rows.Scan(&guild, &name, &response, &kind, &roles); err != nil {
 			return nil, err
 		}
-		out = append(out, cmd)
+		out = append(out, scanCommand(guild, name, response, kind, roles))
 	}
 	return out, rows.Err()
 }
 
 func (s *Store) GetCommand(ctx context.Context, guildID, name string) (CustomCommand, error) {
-	var cmd CustomCommand
+	var guild, commandName, response, kind string
+	var roles []string
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, name, response FROM custom_commands
-		WHERE guild_id = $1 AND name = $2`, guildID, name).Scan(&cmd.GuildID, &cmd.Name, &cmd.Response)
+		SELECT guild_id, name, response, kind, role_ids FROM custom_commands
+		WHERE guild_id = $1 AND name = $2`, guildID, name).Scan(&guild, &commandName, &response, &kind, &roles)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CustomCommand{}, ErrNotFound
 	}
-	return cmd, err
+	if err != nil {
+		return CustomCommand{}, err
+	}
+	return scanCommand(guild, commandName, response, kind, roles), nil
 }
 
 func (s *Store) SaveCommand(ctx context.Context, cmd CustomCommand) error {
+	if cmd.RoleIDs == nil {
+		cmd.RoleIDs = []string{}
+	}
+	if cmd.Kind == "" {
+		cmd.Kind = "lua"
+	}
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO custom_commands (guild_id, name, response)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (guild_id, name) DO UPDATE SET response = EXCLUDED.response`,
-		cmd.GuildID, cmd.Name, cmd.Response)
+		INSERT INTO custom_commands (guild_id, name, response, kind, role_ids)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (guild_id, name) DO UPDATE SET
+			response = EXCLUDED.response,
+			kind = EXCLUDED.kind,
+			role_ids = EXCLUDED.role_ids`,
+		cmd.GuildID, cmd.Name, cmd.Response, cmd.Kind, cmd.RoleIDs)
 	return err
 }
 

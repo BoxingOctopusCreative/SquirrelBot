@@ -31,6 +31,8 @@ const (
 	MaxAnnounceBody   = 4000
 	MaxReason         = 400
 	MaxCustomResponse = 1500
+	MaxCommandSource  = 8000
+	MaxCommandRoles   = 10
 	MaxWelcome        = 1500
 	MaxBadWords       = 100
 	MaxBadWordLen     = 40

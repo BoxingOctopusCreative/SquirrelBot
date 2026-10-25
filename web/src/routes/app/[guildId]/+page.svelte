@@ -19,6 +19,17 @@
 <p class="kicker">{data.bundle.guild.name}</p>
 <h1>On duty</h1>
 <p class="sub">{sentence}</p>
+<nav class="metrics" aria-label="Live work">
+	<a class={counts.scheduledAnnouncements > 0 ? 'hot' : ''} style:--tone="#d08a4a" href={`/app/${data.bundle.guild.id}/announcements`}>
+		<b>{counts.scheduledAnnouncements}</b><span>Queued</span>
+	</a>
+	<a class={counts.activeEscalations > 0 ? 'hot' : ''} style:--tone="#d08a4a" href={`/app/${data.bundle.guild.id}/escalations`}>
+		<b>{counts.activeEscalations}</b><span>On Duty</span>
+	</a>
+	<a class={counts.pendingGate > 0 ? 'hot' : ''} style:--tone="#e15d52" href={`/app/${data.bundle.guild.id}/verification`}>
+		<b>{counts.pendingGate}</b><span>Applicants</span>
+	</a>
+</nav>
 {#if data.bundle.nextKick}
 	<p class="sub">Next application kick: {when(data.bundle.nextKick)}</p>
 {/if}

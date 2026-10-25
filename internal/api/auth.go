@@ -69,7 +69,7 @@ func (v *jsonIntString) UnmarshalJSON(data []byte) error {
 	return errors.New("expected a string or number")
 }
 
-const botInvitePermissions = "1099780156502"
+const botInvitePermissions = "1099847265366"
 
 const oauthScopes = "identify guilds bot applications.commands"
 

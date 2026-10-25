@@ -23,13 +23,17 @@ func (b *Bot) refreshStar(guildID, channelID, messageID string, emoji *discordgo
 	if guildID == "" || channelID == "" || messageID == "" {
 		return
 	}
-	if emoji != nil && !domain.IsStarEmoji(emoji.Name) {
-		return
-	}
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	board, err := b.store.GetStarboard(ctx, guildID)
-	if err != nil || !board.Enabled || board.ChannelID == "" {
+	if err != nil {
+		b.log.Warn("starboard load", "guild", guildID, "err", err)
+		return
+	}
+	if !board.Enabled || board.ChannelID == "" {
+		return
+	}
+	if emoji != nil && !domain.MatchEmoji(board.Emoji, emojiKey(*emoji)) {
 		return
 	}
 	post, found, err := b.store.StarPost(ctx, guildID, messageID)
@@ -47,13 +51,15 @@ func (b *Bot) refreshStar(guildID, channelID, messageID string, emoji *discordgo
 	if err != nil {
 		if statusOf(err) == 404 && found {
 			b.dropStarPost(ctx, post)
+		} else if statusOf(err) != 404 {
+			b.log.Warn("starboard message", "guild", guildID, "err", err)
 		}
 		return
 	}
 	if msg.Author == nil {
 		return
 	}
-	reactors, err := b.starReactors(channelID, messageID)
+	reactors, err := b.starReactors(channelID, messageID, board.Emoji)
 	if err != nil {
 		b.log.Warn("starboard reactions", "guild", guildID, "err", err)
 		return
@@ -78,7 +84,7 @@ func (b *Bot) dropStarPost(ctx context.Context, post store.StarPost) {
 }
 
 func (b *Bot) publishStar(ctx context.Context, board store.Starboard, msg *discordgo.Message, count int, image string, existing store.StarPost, found bool) {
-	embed := starEmbed(msg, count, image)
+	embed := starEmbed(msg, board.Emoji, count, image)
 	if found {
 		embeds := []*discordgo.MessageEmbed{embed}
 		edit := discordgo.NewMessageEdit(existing.StarChannelID, existing.StarMessageID)
@@ -111,8 +117,8 @@ func (b *Bot) publishStar(ctx context.Context, board store.Starboard, msg *disco
 	}
 }
 
-func (b *Bot) starReactors(channelID, messageID string) ([]domain.StarReactor, error) {
-	emoji := url.PathEscape(domain.StarEmoji)
+func (b *Bot) starReactors(channelID, messageID, emoji string) ([]domain.StarReactor, error) {
+	emoji = url.PathEscape(emoji)
 	var out []domain.StarReactor
 	after := ""
 	for page := 0; page < 5; page++ {
@@ -144,16 +150,17 @@ func (b *Bot) channelNSFW(channelID string) bool {
 	return err == nil && channel != nil && channel.NSFW
 }
 
-func starEmbed(msg *discordgo.Message, count int, image string) *discordgo.MessageEmbed {
+func starEmbed(msg *discordgo.Message, emoji string, count int, image string) *discordgo.MessageEmbed {
 	text := starBody(msg.Content)
 	if text == "" {
 		text = "(no text)"
 	}
 	jump := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", msg.GuildID, msg.ChannelID, msg.ID)
+	mark, icon := starMark(emoji)
 	embed := &discordgo.MessageEmbed{
 		Description: text + "\n\n[Jump to message](" + jump + ")",
 		Color:       starColor,
-		Footer:      &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("⭐ %d", count)},
+		Footer:      &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("%s %d", mark, count), IconURL: icon},
 	}
 	if msg.Author != nil {
 		embed.Author = &discordgo.MessageEmbedAuthor{
@@ -168,6 +175,17 @@ func starEmbed(msg *discordgo.Message, count int, image string) *discordgo.Messa
 		embed.Image = &discordgo.MessageEmbedImage{URL: image}
 	}
 	return embed
+}
+
+func starMark(emoji string) (text, icon string) {
+	name, id, ok := strings.Cut(emoji, ":")
+	if ok && name != "" && domain.ValidSnowflake(id) {
+		return ":" + name + ":", "https://cdn.discordapp.com/emojis/" + id + ".png"
+	}
+	if emoji == "" {
+		emoji = domain.StarEmoji
+	}
+	return emoji, ""
 }
 
 func starBody(content string) string {
