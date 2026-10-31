@@ -74,7 +74,23 @@ helm upgrade --install squirrelbot deploy/helm/squirrelbot \
 
 Set `postgres.enabled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore.
 
-`make image` builds `squirrelbot:0.1.0` from the repository root. Override the tag with `make image IMAGE=squirrelbot:dev`.
+`make image` builds `squirrelbot:0.1.0` from the repository root. Override the tag with `make image IMAGE=squirrelbot:dev`. Set `imagePullSecrets` when the registry is private.
+
+## Releases
+
+Pull requests run the tests. Merging a pull request into `main` tags that commit and publishes a GitHub release. The first release is `v0.1.0`. Later merged pull requests increment the patch number. Add `[skip release]` to the pull request title, the pull request body, or the commit message to skip publishing. A direct push to `main` does not publish a release.
+
+CI pushes a tag. It does not push commits to `main`.
+
+Each release includes:
+
+- Archives for Linux and macOS, on amd64 and arm64. An archive contains `squirrelbot`, `web/build`, and `LICENSE`. Extract it and run `./squirrelbot` from that directory.
+- The image `ghcr.io/boxingoctopuscreative/squirrelbot`, tagged with the version and with `latest`.
+- The Helm chart, attached to the GitHub release and published to `oci://ghcr.io/boxingoctopuscreative/charts/squirrelbot`.
+
+The published chart uses that GHCR image. The chart in this repository keeps the local image name `squirrelbot`, which matches `make image`. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
+
+CI sets the GHCR package visibility to match the repository.
 
 ## License
 
