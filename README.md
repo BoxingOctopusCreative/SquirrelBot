@@ -62,6 +62,8 @@ The chart is `deploy/helm/squirrelbot`. It runs one replica with the Recreate st
 
 Supply secrets with `--set`, a private values file, or `existingSecret`. The secret keys are `DATABASE_URL`, `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `SESSION_SECRET`.
 
+`deploy/flux/squirrelbot-kustomization.yaml` is a Flux Kustomization for the published chart. It reconciles `deploy/flux/squirrelbot`. Create a Secret named `squirrelbot` in the `squirrelbot` namespace before the first reconcile, with those keys. Point `sourceRef` at your Flux GitRepository when it is not named `flux-system`. Pin `version` in the HelmRelease to stop automatic upgrades.
+
 ```sh
 helm upgrade --install squirrelbot deploy/helm/squirrelbot \
   --set publicUrl=https://mod.example.com \
