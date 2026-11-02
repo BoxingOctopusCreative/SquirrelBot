@@ -6,6 +6,8 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
+imagePullSecrets: []
+
 # The Discord gateway allows one session per bot token. The Deployment
 # hardcodes replicas to 1 and uses Recreate. Do not scale this chart.
 
