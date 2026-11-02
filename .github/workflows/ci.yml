@@ -181,12 +181,14 @@ jobs:
           fi
           prs=$(gh api -H "Accept: application/vnd.github+json" \
             "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls")
-          merged=$(printf '%s' "$prs" | jq '[.[] | select(.merged == true and .base.ref == "main")]')
+          # This endpoint leaves .merged null and sets .merged_at for a merged pull request.
+          merged=$(printf '%s' "$prs" | jq '[.[] | select(.base.ref == "main" and .merged_at != null)]')
           if [ "$(printf '%s' "$merged" | jq 'length')" = "0" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "This push did not come from a pull request merged into main."
             exit 0
           fi
+          echo "Publishing pull request #$(printf '%s' "$merged" | jq -r '.[0].number')."
           if printf '%s' "$merged" | jq -e 'any(.[]; ((.title // "") | contains("[skip release]")) or ((.body // "") | contains("[skip release]")))' >/dev/null; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "The merged pull request skips the release."
