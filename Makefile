@@ -1,4 +1,4 @@
-IMAGE ?= squirrelbot:0.1.0
+IMAGE_NAME ?= squirrelbot
 CONTAINER ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 COMPOSE = $(CONTAINER) compose
 
@@ -15,7 +15,7 @@ help:
 		'up           Bot and Postgres via $(CONTAINER)' \
 		'down         Stop $(CONTAINER) compose services' \
 		'build        Local bot binary and dashboard' \
-		'image        Container image ($(IMAGE))' \
+		'image        $(IMAGE_NAME):latest and the next patch version' \
 		'test         Go unit tests' \
 		'test-e2e     API and dashboard end-to-end tests'
 
@@ -51,7 +51,28 @@ build-web: web/node_modules
 	npm --prefix web run build
 
 image:
-	$(CONTAINER) build -t $(IMAGE) .
+	@mkdir -p build
+	@version_file=build/image-version; \
+	if [ -f "$$version_file" ]; then \
+		version=$$(tr -d '[:space:]' < "$$version_file"); \
+	else \
+		version=$$(awk '/^appVersion:/{gsub(/"/,"",$$2); print $$2; exit}' deploy/helm/squirrelbot/Chart.yaml); \
+	fi; \
+	case "$$version" in \
+		*.*.*) ;; \
+		*) echo "image version must be major.minor.patch, got $$version" >&2; exit 1 ;; \
+	esac; \
+	major=$${version%%.*}; \
+	rest=$${version#*.}; \
+	minor=$${rest%%.*}; \
+	patch=$${rest#*.}; \
+	case "$$patch" in \
+		*[!0-9]*) echo "image patch must be a number, got $$patch" >&2; exit 1 ;; \
+	esac; \
+	next="$$major.$$minor.$$((10#$$patch + 1))"; \
+	echo "Building $(IMAGE_NAME):$$next and $(IMAGE_NAME):latest"; \
+	$(CONTAINER) build -t "$(IMAGE_NAME):$$next" -t "$(IMAGE_NAME):latest" . \
+		&& printf '%s\n' "$$next" > "$$version_file"
 
 test:
 	go test ./...

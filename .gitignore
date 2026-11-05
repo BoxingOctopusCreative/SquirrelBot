@@ -1,4 +1,5 @@
 bin/
+build/
 tmp/
 .env
 web/node_modules/
