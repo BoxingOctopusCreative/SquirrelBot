@@ -74,7 +74,12 @@ spec:
               command: ["pg_isready", "-U", {{ .Values.postgres.auth.username | quote }}]
             periodSeconds: 10
           resources:
-            {{- toYaml .Values.postgres.resources | nindent 12 }}
+            {{- $defaults := dict "requests" (dict "cpu" "50m" "memory" "128Mi") "limits" (dict "memory" "512Mi") }}
+            {{- $set := dict }}
+            {{- if .Values.postgres }}
+            {{- $set = .Values.postgres.resources | default dict }}
+            {{- end }}
+            {{- toYaml (mergeOverwrite (deepCopy $defaults) $set) | nindent 12 }}
   volumeClaimTemplates:
     - metadata:
         name: data

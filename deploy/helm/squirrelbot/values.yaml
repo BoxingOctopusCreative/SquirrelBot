@@ -1,18 +1,7 @@
-nameOverride: ""
-fullnameOverride: ""
-
-image:
-  repository: squirrelbot
-  tag: latest
-  pullPolicy: IfNotPresent
-
 imagePullSecrets: []
 
 # The Discord gateway allows one session per bot token. The Deployment
 # hardcodes replicas to 1 and uses Recreate. Do not scale this chart.
-
-service:
-  port: 8080
 
 publicUrl: ""
 
@@ -41,23 +30,14 @@ ingress:
   certResolver: letsencrypt
   tlsSecretName: squirrelbot-tls
 
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    memory: 256Mi
-
 # bundled starts a Postgres StatefulSet for this release.
 # Leave it false and set secrets.databaseUrl for an external database.
 # sslMode is the libpq mode: disable, allow, prefer, require,
 # verify-ca, or verify-full. The bundled server does not terminate
-# TLS, so leave sslMode at disable for that database. For an external
-# database, an sslmode already in secrets.databaseUrl is kept. When
-# that URL omits sslmode, the chart adds this value.
+# TLS, so that database uses disable. An external database uses
+# require. An sslmode already in secrets.databaseUrl is kept.
 postgres:
   bundled: false
-  sslMode: disable
   image: postgres:16-alpine
   auth:
     database: squirrelbot
@@ -66,9 +46,3 @@ postgres:
   persistence:
     size: 8Gi
     storageClass: ""
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      memory: 512Mi

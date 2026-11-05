@@ -310,7 +310,6 @@ jobs:
         if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          IMAGE: ${{ steps.version.outputs.image }}
         run: |
           set -euo pipefail
           chart="${RUNNER_TEMP}/squirrelbot"
@@ -321,7 +320,6 @@ jobs:
           from pathlib import Path
 
           version = os.environ["VERSION"]
-          image = os.environ["IMAGE"]
           root = Path(os.environ["CHART_DIR"])
 
           chart = root / "Chart.yaml"
@@ -338,18 +336,6 @@ jobs:
           if not saw_version or not saw_app:
               raise SystemExit("Chart.yaml is missing version or appVersion")
           chart.write_text("\n".join(lines) + "\n")
-
-          values = root / "values.yaml"
-          lines = values.read_text().splitlines()
-          found = False
-          for i, line in enumerate(lines):
-              if line.startswith("  repository:"):
-                  lines[i] = f"  repository: {image}"
-                  found = True
-                  break
-          if not found:
-              raise SystemExit("image.repository is missing from values.yaml")
-          values.write_text("\n".join(lines) + "\n")
           PY
           helm package "$chart" --destination dist
           (

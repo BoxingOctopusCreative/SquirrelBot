@@ -29,12 +29,22 @@
 {{- end }}
 
 {{- define "squirrelbot.image" -}}
-{{- $tag := .Values.image.tag | default "latest" }}
-{{- printf "%s:%s" .Values.image.repository $tag }}
+{{- $image := .Values.image | default dict }}
+{{- $repository := $image.repository | default "ghcr.io/boxingoctopuscreative/squirrelbot" }}
+{{- $tag := $image.tag | default "latest" }}
+{{- printf "%s:%s" $repository $tag }}
 {{- end }}
 
 {{- define "squirrelbot.sslMode" -}}
-{{- $mode := .Values.postgres.sslMode | default "disable" -}}
+{{- $postgres := .Values.postgres | default dict -}}
+{{- $mode := $postgres.sslMode -}}
+{{- if not $mode -}}
+{{- if $postgres.bundled -}}
+{{- $mode = "disable" -}}
+{{- else -}}
+{{- $mode = "require" -}}
+{{- end -}}
+{{- end -}}
 {{- $allowed := list "disable" "allow" "prefer" "require" "verify-ca" "verify-full" -}}
 {{- if not (has $mode $allowed) -}}
 {{- fail "postgres.sslMode must be disable, allow, prefer, require, verify-ca, or verify-full" -}}
