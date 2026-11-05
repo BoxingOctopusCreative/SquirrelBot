@@ -31,7 +31,7 @@
 {{- define "squirrelbot.image" -}}
 {{- $image := .Values.image | default dict }}
 {{- $repository := $image.repository | default "ghcr.io/boxingoctopuscreative/squirrelbot" }}
-{{- $tag := $image.tag | default "latest" }}
+{{- $tag := $image.tag | default .Chart.AppVersion | default "latest" }}
 {{- printf "%s:%s" $repository $tag }}
 {{- end }}
 
