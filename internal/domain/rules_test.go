@@ -82,4 +82,10 @@ func TestPermissions(t *testing.T) {
 	if !HasPermission(PermManageMessages, PermManageMessages) {
 		t.Fatal("expected exact permission")
 	}
+	if !SharesRole([]string{"mod", "member"}, []string{"mod"}) {
+		t.Fatal("expected a shared role")
+	}
+	if SharesRole([]string{"member"}, []string{"mod"}) {
+		t.Fatal("member role is not a dashboard role")
+	}
 }

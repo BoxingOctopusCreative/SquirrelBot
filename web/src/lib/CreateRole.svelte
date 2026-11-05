@@ -1,17 +1,20 @@
 <script lang="ts">
 	import { refreshAll } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import type { Role } from '#lib/types';
 
 	let {
 		guildId,
+		defaultName = '',
 		oncreated
 	}: {
 		guildId: string;
-		oncreated?: (role: Role) => void;
+		defaultName?: string;
+		oncreated?: (role: Role) => void | Promise<void>;
 	} = $props();
 
-	let roleName = $state('');
+	let roleName = $state(untrack(() => defaultName));
 	let busy = $state(false);
 	let notice = $state('');
 
@@ -28,8 +31,8 @@
 				name: typed
 			});
 			await refreshAll();
-			oncreated?.(role);
-			roleName = '';
+			await oncreated?.(role);
+			roleName = defaultName;
 			notice = role.created ? `Created ${role.name}.` : `${role.name} is already there.`;
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not create that role.';
@@ -47,6 +50,7 @@
 
 <input
 	class="role-name"
+	aria-label="Role name"
 	bind:value={roleName}
 	maxlength="100"
 	placeholder="Role name"

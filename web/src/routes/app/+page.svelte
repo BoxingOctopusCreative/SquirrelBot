@@ -9,8 +9,8 @@
 {#if data.guilds.length === 0}
 	<section class="empty">
 		<h1>No servers yet</h1>
-		<p>You will see servers where you have Manage Server and SquirrelBot is a member.</p>
-		<p><a class="button" href="/auth/discord">Add SquirrelBot to a server</a></p>
+		<p>You will see servers where SquirrelBot is a member and you have Manage Server or a dashboard role.</p>
+		<p><a class="button" href="/auth/discord/invite">Add SquirrelBot to a server</a></p>
 	</section>
 {:else}
 	<section class="guild-grid">

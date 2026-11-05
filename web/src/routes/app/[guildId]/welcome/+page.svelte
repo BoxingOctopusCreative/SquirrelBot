@@ -36,7 +36,7 @@
 <svelte:head><title>Welcome · SquirrelBot</title></svelte:head>
 <p class="kicker">Arrival</p>
 <h1>Welcome</h1>
-<p class="sub">The mod and admin roles can use staff commands even when their Discord permissions are narrower. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</p>
+<p class="sub">The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</p>
 <form class="panel" onsubmit={(event) => { event.preventDefault(); save(); }}>
 	<div class="split">
 		<Field label="Mod role"><RoleSelect roles={data.bundle.roles} bind:value={guild.modRoleId} /></Field>

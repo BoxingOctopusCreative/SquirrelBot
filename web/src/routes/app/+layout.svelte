@@ -14,7 +14,7 @@
 <header class="topbar">
 	<a class="brand" href="/app"><img src="/squirrelbot_brandkit_wide.svg" alt="SquirrelBot" width="240" /></a>
 	<div class="who">
-		<a class="button quiet" href="/auth/discord">Add a server</a>
+		<a class="button quiet" href="/auth/discord/invite">Add a server</a>
 		{#if data.me.avatarUrl}<img class="avatar" src={data.me.avatarUrl} alt="" />{/if}
 		<span>{data.me.username}</span>
 		<button class="quiet" type="button" onclick={logout}>Sign out</button>

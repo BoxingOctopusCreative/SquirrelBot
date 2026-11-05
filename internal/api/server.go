@@ -34,6 +34,7 @@ type Server struct {
 	log    *slog.Logger
 	client *http.Client
 	access *accessCache
+	roles  *memberRoleCache
 	meta   *metaCache
 	csp    string
 }
@@ -49,6 +50,7 @@ func New(cfg config.Config, st *store.Store, bot *discord.Bot, log *slog.Logger)
 			Timeout: 15 * time.Second,
 		},
 		access: newAccessCache(),
+		roles:  newMemberRoleCache(),
 		meta:   newMetaCache(),
 	}
 	s.app = fiber.New(fiber.Config{
@@ -104,6 +106,7 @@ func (s *Server) routes() {
 	})
 	s.app.Get("/readyz", s.ready)
 	s.app.Get("/auth/discord", s.startLogin)
+	s.app.Get("/auth/discord/invite", s.startInvite)
 	s.app.Get("/auth/discord/callback", s.finishLogin)
 	s.app.Post("/auth/logout", s.requireSameOrigin, s.logout)
 
@@ -126,6 +129,7 @@ func (s *Server) routes() {
 	guild.Delete("/announcement-templates/:templateID", s.deleteAnnouncementTemplate)
 	guild.Post("/announcement-templates/:templateID/render", s.renderAnnouncementTemplate)
 	guild.Put("/escalation-roles", s.putEscalationRoles)
+	guild.Put("/manager-roles", s.putManagerRoles)
 	guild.Get("/escalations", s.escalations)
 	guild.Post("/escalations", s.createEscalation)
 	guild.Post("/escalations/:escalationID/revoke", s.revokeEscalation)

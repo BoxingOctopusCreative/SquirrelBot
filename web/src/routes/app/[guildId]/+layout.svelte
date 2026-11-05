@@ -16,6 +16,7 @@
 <div class="workspace">
 	<nav class="nav" aria-label="Server sections">
 		<a href={`/app/${id}`} aria-current={current(`/app/${id}`)}>Overview</a>
+		<a href={`/app/${id}/access`} aria-current={current(`/app/${id}/access`)}>Dashboard access</a>
 		<a href={`/app/${id}/profile`} aria-current={current(`/app/${id}/profile`)}>Profile</a>
 		<a href={`/app/${id}/announcements`} aria-current={current(`/app/${id}/announcements`)}>Announcements</a>
 		<a href={`/app/${id}/escalations`} aria-current={current(`/app/${id}/escalations`)}>Admin Firecall Access</a>

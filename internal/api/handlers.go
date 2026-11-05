@@ -93,10 +93,16 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load the starboard.")
 	}
+	managerRoles, err := s.store.ManagerRoleIDs(ctx, guildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load dashboard access.")
+	}
+	manageServer, _ := c.Locals("manageServer").(bool)
 	return c.JSON(fiber.Map{
 		"guild": guild, "counts": counts, "nextKick": nextKick,
 		"channels": channels, "roles": roles, "emojis": emojis, "gate": gate, "automod": automod,
 		"logging": logs, "escalationRoles": escalationRoles, "starboard": starboard,
+		"managerRoleIds": managerRoles, "manageServer": manageServer,
 	})
 }
 
@@ -963,9 +969,33 @@ func (s *Server) saveCommand(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(body)
 }
 
+func (s *Server) putManagerRoles(c *fiber.Ctx) error {
+	if allowed, _ := c.Locals("manageServer").(bool); !allowed {
+		return fail(c, fiber.StatusForbidden, "You need Manage Server to choose dashboard roles.")
+	}
+	var body struct {
+		RoleIDs []string `json:"roleIds"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return fail(c, fiber.StatusBadRequest, "Could not read that request.")
+	}
+	ids, err := s.checkedRoles(c.Params("guildID"), body.RoleIDs, domain.MaxManagerRoles, "Choose at most 20 roles.")
+	if err != nil {
+		return fail(c, commandRoleStatus(err), err.Error())
+	}
+	if err := s.store.SetManagerRoleIDs(c.UserContext(), c.Params("guildID"), ids); err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save dashboard access.")
+	}
+	return c.JSON(fiber.Map{"roleIds": ids})
+}
+
 func (s *Server) checkedCommandRoles(guildID string, ids []string) ([]string, error) {
-	if len(ids) > domain.MaxCommandRoles {
-		return nil, errors.New("Choose at most 10 roles.")
+	return s.checkedRoles(guildID, ids, domain.MaxCommandRoles, "Choose at most 10 roles.")
+}
+
+func (s *Server) checkedRoles(guildID string, ids []string, max int, tooMany string) ([]string, error) {
+	if len(ids) > max {
+		return nil, errors.New(tooMany)
 	}
 	if len(ids) == 0 {
 		return []string{}, nil
