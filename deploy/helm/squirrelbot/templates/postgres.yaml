@@ -1,6 +1,6 @@
-{{- if .Values.postgres.enabled }}
+{{- if .Values.postgres.bundled }}
 {{- if not .Values.postgres.auth.password }}
-{{- fail "postgres.auth.password is required when postgres.enabled is true" }}
+{{- fail "postgres.auth.password is required when postgres.bundled is true" }}
 {{- end }}
 apiVersion: v1
 kind: Service
