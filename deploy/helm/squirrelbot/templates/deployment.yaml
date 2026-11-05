@@ -34,7 +34,7 @@ spec:
       containers:
         - name: squirrelbot
           image: {{ include "squirrelbot.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          imagePullPolicy: {{ ((.Values.image | default dict).pullPolicy) | default "IfNotPresent" }}
           ports:
             - name: http
               containerPort: 8080
@@ -64,7 +64,9 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- $defaults := dict "requests" (dict "cpu" "50m" "memory" "64Mi") "limits" (dict "memory" "256Mi") }}
+            {{- $set := .Values.resources | default dict }}
+            {{- toYaml (mergeOverwrite (deepCopy $defaults) $set) | nindent 12 }}
       volumes:
         - name: tmp
           emptyDir: {}

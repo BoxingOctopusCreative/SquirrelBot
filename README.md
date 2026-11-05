@@ -67,14 +67,14 @@ The chart is `deploy/helm/squirrelbot`. It runs one replica with the Recreate st
 ```sh
 helm upgrade --install squirrelbot deploy/helm/squirrelbot \
   --set publicUrl=https://mod.example.com \
-  --set secrets.databaseUrl='postgres://squirrelbot:PASSWORD@db:5432/squirrelbot?sslmode=disable' \
+  --set secrets.databaseUrl='postgres://squirrelbot:PASSWORD@db:5432/squirrelbot' \
   --set secrets.discordToken=TOKEN \
   --set secrets.discordClientId=CLIENT_ID \
   --set secrets.discordClientSecret=CLIENT_SECRET \
   --set secrets.sessionSecret=AT_LEAST_32_RANDOM_CHARACTERS
 ```
 
-Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore. `postgres.sslMode` sets the libpq mode on `DATABASE_URL` when the chart writes that URL. The default is `disable`. An `sslmode` already present in `secrets.databaseUrl` is left as written.
+Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore. `postgres.sslMode` sets the libpq mode on `DATABASE_URL` when the chart writes that URL. Bundled Postgres uses `disable`. An external database uses `require`. An `sslmode` already present in `secrets.databaseUrl` is left as written.
 
 `make image` builds `squirrelbot:latest` and the next patch version from the repository root. The first build is one patch above the chart app version. Later builds increment the patch again. The last version is stored in `build/image-version`. Set `imagePullSecrets` when the registry is private.
 
@@ -90,7 +90,7 @@ Each release includes:
 - The image `ghcr.io/boxingoctopuscreative/squirrelbot`, tagged with the version and with `latest`.
 - The Helm chart, attached to the GitHub release and published to `oci://ghcr.io/boxingoctopuscreative/charts/squirrelbot`. Each release also carries an `index.yaml`, so Helm can add the release archive as a chart repository.
 
-The published chart uses that GHCR image. The chart in this repository keeps the local image name `squirrelbot`, which matches `make image`. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
+The chart pulls `ghcr.io/boxingoctopuscreative/squirrelbot`. `make image` builds the local name `squirrelbot`. Set `image.repository=squirrelbot` to use that image. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
 
 ```sh
 helm repo add squirrelbot https://github.com/BoxingOctopusCreative/SquirrelBot/releases/latest/download
