@@ -168,8 +168,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          cat > "${RUNNER_TEMP}/chart-commit.sh" << 'EOF'
+          is_chart_commit() {
+            local sha=$1 parent=$2 version=${3:-}
+            local subject files parent_sha
+            parent_sha=$(git rev-parse "${sha}^" 2>/dev/null) || return 1
+            [ "$parent_sha" = "$parent" ] || return 1
+            files=$(git diff-tree --no-commit-id --name-only -r "$sha")
+            [ "$files" = "deploy/helm/squirrelbot/Chart.yaml" ] || return 1
+            git log -1 --format=%b "$sha" | grep -F -q '[skip release]' || return 1
+            subject=$(git log -1 --format=%s "$sha")
+            if [ -n "$version" ]; then
+              [ "$subject" = "Update the Helm chart to ${version}." ]
+              return
+            fi
+            case "$subject" in
+              "Update the Helm chart to "[0-9]*.[0-9]*.[0-9]*.) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          EOF
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/chart-commit.sh"
           git fetch origin main --tags --force
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+          head=$(git rev-parse HEAD)
+          main=$(git rev-parse origin/main)
+          if [ "$head" != "$main" ] && ! is_chart_commit "$main" "$head"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "main has moved past this commit. The newer run will publish the release."
             exit 0
@@ -215,8 +239,16 @@ jobs:
           echo "image=${image}" >> "$GITHUB_OUTPUT"
           echo "chart=ghcr.io/${owner}/charts" >> "$GITHUB_OUTPUT"
 
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/chart-commit.sh"
           latest=$(git tag --list 'v*' --sort=-v:refname | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')
-          if [ -n "$latest" ] && [ "$(git rev-parse "${latest}^{}")" = "$(git rev-parse HEAD)" ]; then
+          head=$(git rev-parse HEAD)
+          if [ -n "$latest" ]; then
+            latest_sha=$(git rev-parse "${latest}^{}")
+          else
+            latest_sha=
+          fi
+          if [ -n "$latest" ] && { [ "$latest_sha" = "$head" ] || is_chart_commit "$latest_sha" "$head"; }; then
             version="${latest#v}"
             echo "version=${version}" >> "$GITHUB_OUTPUT"
             if gh release view "$latest" >/dev/null 2>&1; then
@@ -306,23 +338,19 @@ jobs:
             rm -rf "$stage"
           done
 
-      - name: Package the chart
-        if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+      - name: Set the chart version
+        if: steps.gate.outputs.skip != 'true' && steps.version.outputs.version != ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          chart="${RUNNER_TEMP}/squirrelbot"
-          rm -rf "$chart"
-          cp -a deploy/helm/squirrelbot "$chart"
-          CHART_DIR="$chart" python3 - <<'PY'
+          script="${RUNNER_TEMP}/set-chart-version.py"
+          cat > "$script" <<'PY'
           import os
           from pathlib import Path
 
           version = os.environ["VERSION"]
-          root = Path(os.environ["CHART_DIR"])
-
-          chart = root / "Chart.yaml"
+          chart = Path(os.environ["CHART"])
           lines = chart.read_text().splitlines()
           saw_version = False
           saw_app = False
@@ -337,7 +365,21 @@ jobs:
               raise SystemExit("Chart.yaml is missing version or appVersion")
           chart.write_text("\n".join(lines) + "\n")
           PY
-          helm package "$chart" --destination dist
+          CHART=deploy/helm/squirrelbot/Chart.yaml python3 "$script"
+
+      - name: Package the chart
+        if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          chart_version=$(awk '/^version:/{print $2; exit}' deploy/helm/squirrelbot/Chart.yaml)
+          app_version=$(awk '/^appVersion:/{gsub(/"/,"",$2); print $2; exit}' deploy/helm/squirrelbot/Chart.yaml)
+          if [ "$chart_version" != "$VERSION" ] || [ "$app_version" != "$VERSION" ]; then
+            echo "Chart.yaml is ${chart_version} / ${app_version}, expected ${VERSION}." >&2
+            exit 1
+          fi
+          helm package deploy/helm/squirrelbot --destination dist
           (
             cd dist
             sha256sum squirrelbot_"${VERSION}"_*.tar.gz "squirrelbot-${VERSION}.tgz" > SHA256SUMS
@@ -346,14 +388,20 @@ jobs:
       - name: Confirm main has not moved
         id: recheck
         if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/chart-commit.sh"
           git fetch origin main
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+          head=$(git rev-parse HEAD)
+          main=$(git rev-parse origin/main)
+          if [ "$head" = "$main" ] || is_chart_commit "$main" "$head" "$VERSION"; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "main moved during the build. A newer run will publish the release."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR
@@ -404,13 +452,38 @@ jobs:
           RESUME: ${{ steps.version.outputs.resume }}
         run: |
           set -euo pipefail
+          # shellcheck disable=SC1091
+          source "${RUNNER_TEMP}/chart-commit.sh"
           git fetch origin main --tags
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+          head=$(git rev-parse HEAD)
+          main=$(git rev-parse origin/main)
+          if [ "$head" != "$main" ] && ! is_chart_commit "$main" "$head" "$VERSION"; then
             echo "main moved during publish. A newer run will release."
             exit 0
           fi
+
+          release_sha=$main
+          if [ "$head" = "$main" ]; then
+            wt="${RUNNER_TEMP}/chart-main"
+            git worktree prune
+            rm -rf "$wt"
+            git worktree add --detach "$wt" HEAD
+            CHART="${wt}/deploy/helm/squirrelbot/Chart.yaml" python3 "${RUNNER_TEMP}/set-chart-version.py"
+            git -C "$wt" add -- deploy/helm/squirrelbot/Chart.yaml
+            if ! git -C "$wt" diff --cached --quiet; then
+              git -C "$wt" \
+                -c user.name='github-actions[bot]' \
+                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                commit \
+                -m "Update the Helm chart to ${VERSION}." \
+                -m "[skip release]"
+              git -C "$wt" push origin HEAD:main
+              release_sha=$(git -C "$wt" rev-parse HEAD)
+            fi
+          fi
+
           if [ "$RESUME" != "true" ]; then
-            git tag "v${VERSION}"
+            git tag "v${VERSION}" "$release_sha"
           fi
           git push origin "v${VERSION}"
 
@@ -444,10 +517,13 @@ jobs:
             echo "Changes:"
             echo
             if [ -n "$latest" ]; then
-              git log --pretty=format:'- %s' "${latest}..v${VERSION}"
+              log_range="${latest}..v${VERSION}"
             else
-              git log --pretty=format:'- %s' "v${VERSION}"
+              log_range="v${VERSION}"
             fi
+            git log --pretty=format:'- %s' "$log_range" \
+              | grep -v '^- Update the Helm chart to ' \
+              || true
             echo
           } > "$notes"
 
@@ -458,6 +534,67 @@ jobs:
             "dist/index.yaml" \
             dist/squirrelbot_"${VERSION}"_*.tar.gz \
             "dist/squirrelbot-${VERSION}.tgz"
+
+      - name: Commit the chart version
+        if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          chart=deploy/helm/squirrelbot/Chart.yaml
+          script="${RUNNER_TEMP}/set-chart-version.py"
+
+          version_gt() {
+            local left=$1 right=$2
+            local lmaj lmin lpat rmaj rmin rpat
+            IFS=. read -r lmaj lmin lpat <<< "$left"
+            IFS=. read -r rmaj rmin rpat <<< "$right"
+            local part
+            for part in "$lmaj" "$lmin" "$lpat" "$rmaj" "$rmin" "$rpat"; do
+              case "$part" in
+                ''|*[!0-9]*) return 1 ;;
+              esac
+            done
+            if [ "$((10#$lmaj))" -gt "$((10#$rmaj))" ]; then return 0; fi
+            if [ "$((10#$lmaj))" -lt "$((10#$rmaj))" ]; then return 1; fi
+            if [ "$((10#$lmin))" -gt "$((10#$rmin))" ]; then return 0; fi
+            if [ "$((10#$lmin))" -lt "$((10#$rmin))" ]; then return 1; fi
+            if [ "$((10#$lpat))" -gt "$((10#$rpat))" ]; then return 0; fi
+            return 1
+          }
+
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "origin/main does not contain this commit. Leaving Chart.yaml unchanged."
+            exit 0
+          fi
+          main_version=$(git show "origin/main:${chart}" | awk '/^version:/{gsub(/"/,"",$2); print $2; exit}')
+          if [ "$main_version" = "$VERSION" ]; then
+            echo "Chart.yaml on main is already ${VERSION}."
+            exit 0
+          fi
+          if version_gt "$main_version" "$VERSION"; then
+            echo "Chart.yaml on main is ${main_version}, which is newer than ${VERSION}."
+            exit 0
+          fi
+
+          wt="${RUNNER_TEMP}/chart-main"
+          git worktree prune
+          rm -rf "$wt"
+          git worktree add --detach "$wt" origin/main
+          CHART="${wt}/${chart}" python3 "$script"
+          git -C "$wt" add -- "$chart"
+          if git -C "$wt" diff --cached --quiet; then
+            echo "Chart.yaml on main already matches ${VERSION}."
+            exit 0
+          fi
+          git -C "$wt" \
+            -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit \
+            -m "Update the Helm chart to ${VERSION}." \
+            -m "[skip release]"
+          git -C "$wt" push origin HEAD:main
 
       - name: Set package visibility
         if: steps.gate.outputs.skip != 'true' && steps.version.outputs.skip != 'true' && steps.recheck.outputs.skip != 'true'
