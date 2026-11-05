@@ -68,6 +68,32 @@ func (s *Store) GetGuild(ctx context.Context, id string) (Guild, error) {
 	return g, err
 }
 
+func (s *Store) ManagerRoleIDs(ctx context.Context, guildID string) ([]string, error) {
+	var raw []byte
+	err := s.pool.QueryRow(ctx, `SELECT manager_role_ids FROM guilds WHERE id = $1`, guildID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return decodeIDs(raw), nil
+}
+
+func (s *Store) SetManagerRoleIDs(ctx context.Context, guildID string, ids []string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE guilds SET manager_role_ids = $2, updated_at = now() WHERE id = $1`,
+		guildID, encodeIDs(ids),
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) UpdateGuildSettings(ctx context.Context, g Guild) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE guilds SET

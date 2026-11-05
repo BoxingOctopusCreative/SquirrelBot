@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -69,6 +70,9 @@ func TestHealthAndSignIn(t *testing.T) {
 	if res.StatusCode != http.StatusFound || !strings.Contains(res.Header.Get("Location"), "https://discord.com/oauth2/authorize") {
 		t.Fatalf("login redirect %d %s", res.StatusCode, res.Header.Get("Location"))
 	}
+	if scope := oauthScope(t, res.Header.Get("Location")); scope != "identify guilds" {
+		t.Fatalf("login scope %q", scope)
+	}
 	var state string
 	for _, cookie := range res.Cookies() {
 		if cookie.Name == "sb_oauth_state" {
@@ -79,6 +83,15 @@ func TestHealthAndSignIn(t *testing.T) {
 	if state == "" {
 		t.Fatal("login did not set the state cookie")
 	}
+
+	res = noFollow(t, http.MethodGet, "/auth/discord/invite", nil, "")
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("invite redirect %d", res.StatusCode)
+	}
+	if scope := oauthScope(t, res.Header.Get("Location")); scope != "identify guilds bot applications.commands" {
+		t.Fatalf("invite scope %q", scope)
+	}
+	res.Body.Close()
 
 	res = noFollow(t, http.MethodGet, "/auth/discord/callback?error=denied", nil, "")
 	if res.StatusCode != http.StatusFound || !strings.Contains(res.Header.Get("Location"), "error=denied") {
@@ -141,6 +154,57 @@ func TestGuildAccess(t *testing.T) {
 	status, body = call(t, http.MethodGet, "/api/guilds/not-a-snowflake", nil, stack.Cookie)
 	if status != http.StatusNotFound {
 		t.Fatalf("bad id %d %s", status, body)
+	}
+
+	status, body = call(t, http.MethodGet, "/api/guilds", nil, stack.GuestCookie)
+	if status != http.StatusOK || strings.Contains(string(body), harness.GuildName) {
+		t.Fatalf("guest guild list %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/manager-roles", map[string]any{
+		"roleIds": []string{harness.GuildID},
+	}, stack.Cookie)
+	if status != http.StatusBadRequest {
+		t.Fatalf("everyone role %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/manager-roles", map[string]any{
+		"roleIds": []string{harness.BotRoleID},
+	}, stack.Cookie)
+	if status != http.StatusBadRequest {
+		t.Fatalf("managed role %d %s", status, body)
+	}
+	t.Cleanup(func() {
+		status, body := call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/manager-roles", map[string]any{
+			"roleIds": []string{},
+		}, stack.Cookie)
+		if status != http.StatusOK {
+			t.Errorf("clear dashboard roles %d %s", status, body)
+		}
+	})
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/manager-roles", map[string]any{
+		"roleIds": []string{harness.MemberRoleID},
+	}, stack.Cookie)
+	if status != http.StatusOK || !strings.Contains(string(body), harness.MemberRoleID) {
+		t.Fatalf("save dashboard roles %d %s", status, body)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds", nil, stack.GuestCookie)
+	if status != http.StatusOK || !strings.Contains(string(body), harness.GuildName) {
+		t.Fatalf("guest guild list after grant %d %s", status, body)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.GuestCookie)
+	if status != http.StatusOK || !strings.Contains(string(body), `"manageServer":false`) {
+		t.Fatalf("guest bundle %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/manager-roles", map[string]any{
+		"roleIds": []string{harness.AdminRoleID},
+	}, stack.GuestCookie)
+	if status != http.StatusForbidden {
+		t.Fatalf("guest edit roles %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/automod", map[string]any{
+		"action": "nope",
+	}, stack.GuestCookie)
+	if status != http.StatusBadRequest {
+		t.Fatalf("guest passed the guild gate %d %s", status, body)
 	}
 }
 
@@ -436,6 +500,15 @@ func noFollow(t *testing.T, method, path string, payload any, cookie string) *ht
 		t.Fatal(err)
 	}
 	return res
+}
+
+func oauthScope(t *testing.T, location string) string {
+	t.Helper()
+	parsed, err := url.Parse(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed.Query().Get("scope")
 }
 
 func request(t *testing.T, method, path string, payload any, cookie string) *http.Request {

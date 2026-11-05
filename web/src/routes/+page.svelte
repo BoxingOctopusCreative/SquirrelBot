@@ -31,7 +31,8 @@
 				</svg>
 				Continue with Discord
 			</a>
-			<p class="hint">Discord asks you to sign in, then add SquirrelBot to a server you manage.</p>
+			<a class="button quiet" href="/auth/discord/invite">Add SquirrelBot to a server</a>
+			<p class="hint">Sign in to open servers where SquirrelBot is already installed. Add it to a new server when you need to.</p>
 		</div>
 	</aside>
 </main>

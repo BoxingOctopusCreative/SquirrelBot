@@ -48,6 +48,7 @@ func newDiscord(access, guestAccess, refresh string) *discordFake {
 	}
 	members := map[string]member{
 		UserID:       {id: UserID, username: "acorn", globalName: UserName, roles: []string{AdminRoleID}},
+		GuestUserID:  {id: GuestUserID, username: "guest", globalName: "Guest", roles: []string{MemberRoleID}},
 		TargetUserID: {id: TargetUserID, username: TargetUsername, globalName: TargetName, nick: TargetName, roles: []string{MemberRoleID}},
 		BotUserID:    {id: BotUserID, username: "squirrelbot", globalName: "squirrelbot", roles: []string{BotRoleID}, bot: true},
 	}

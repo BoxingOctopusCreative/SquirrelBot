@@ -10,6 +10,8 @@ test.describe('signed out', () => {
 	test('landing page offers Discord sign-in', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('link', { name: 'Continue with Discord' })).toHaveAttribute('href', '/auth/discord');
+		await expect(page.getByRole('link', { name: 'Add SquirrelBot to a server' })).toHaveAttribute('href', '/auth/discord/invite');
+		await expect(page.getByText('Sign in to open servers where SquirrelBot is already installed.')).toBeVisible();
 		await expect(page.getByText('Moderation Without Enshittification.')).toBeVisible();
 	});
 
@@ -34,12 +36,14 @@ test.describe('dashboard', () => {
 
 	test('lists the server and opens every section', async ({ page }) => {
 		await page.goto('/app');
+		await expect(page.getByRole('link', { name: 'Add a server' })).toHaveAttribute('href', '/auth/discord/invite');
 		await expect(page.getByRole('link', { name: 'Canopy' })).toBeVisible();
 		await expect(page.getByText('Acorn')).toBeVisible();
 		await page.getByRole('link', { name: 'Canopy' }).click();
 		await expect(page.getByRole('heading', { name: 'On duty' })).toBeVisible();
 
 		const sections: [string, string][] = [
+			['Dashboard access', 'Dashboard access'],
 			['Profile', 'Profile'],
 			['Announcements', 'Announcements'],
 			['Admin Firecall Access', 'Admin Firecall Access'],
@@ -57,6 +61,26 @@ test.describe('dashboard', () => {
 			await nav.getByRole('link', { name: link }).click();
 			await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 		}
+	});
+
+	test('saves dashboard access roles', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Dashboard access' }).click();
+		await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption({ label: 'Mods' });
+		await page.getByRole('button', { name: 'Add role' }).click();
+		await page.getByRole('button', { name: 'Save access' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+		await expect(page.locator('.list').getByText('Mods')).toBeVisible();
+		await page.reload();
+		await expect(page.locator('.list').getByText('Mods')).toBeVisible();
+		await expect(page.getByLabel('Role name', { exact: true })).toHaveValue('Moderator');
+		await page.getByLabel('Role name', { exact: true }).fill('Night mods');
+		await page.getByRole('button', { name: 'Create role' }).click();
+		await expect(page.getByText('Created Night mods.')).toBeVisible();
+		await expect(page.locator('.list').getByText('Night mods')).toBeVisible();
+		await page.reload();
+		await expect(page.locator('.list').getByText('Night mods')).toBeVisible();
+		await expect(page.getByLabel('Role name', { exact: true })).toHaveValue('Moderator');
 	});
 
 	test('saves the server profile', async ({ page }) => {

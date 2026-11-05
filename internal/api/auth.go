@@ -71,29 +71,47 @@ func (v *jsonIntString) UnmarshalJSON(data []byte) error {
 
 const botInvitePermissions = "1099847265366"
 
-const oauthScopes = "identify guilds bot applications.commands"
+const (
+	// loginScopes identifies the user and lists servers they can manage.
+	// It leaves out the bot scope so Discord does not ask them to install SquirrelBot.
+	loginScopes = "identify guilds"
+	// inviteScopes is the same sign-in, plus permission to add the bot to one server.
+	inviteScopes = "identify guilds bot applications.commands"
+)
 
-func discordAuthorizeURL(clientID, redirectURI, state string) string {
+func discordAuthorizeURL(clientID, redirectURI, state string, invite bool) string {
 	query := url.Values{}
 	query.Set("client_id", clientID)
 	query.Set("redirect_uri", redirectURI)
 	query.Set("response_type", "code")
-	query.Set("permissions", botInvitePermissions)
-	query.Set("integration_type", "0")
 	query.Set("state", state)
 	query.Set("prompt", "consent")
+	scopes := loginScopes
+	if invite {
+		query.Set("permissions", botInvitePermissions)
+		query.Set("integration_type", "0")
+		scopes = inviteScopes
+	}
 	// Discord's authorize page splits scopes on %20. url.Values encodes a space as +.
-	scope := strings.ReplaceAll(url.QueryEscape(oauthScopes), "+", "%20")
+	scope := strings.ReplaceAll(url.QueryEscape(scopes), "+", "%20")
 	return "https://discord.com/oauth2/authorize?" + query.Encode() + "&scope=" + scope
 }
 
 func (s *Server) startLogin(c *fiber.Ctx) error {
+	return s.beginOAuth(c, false)
+}
+
+func (s *Server) startInvite(c *fiber.Ctx) error {
+	return s.beginOAuth(c, true)
+}
+
+func (s *Server) beginOAuth(c *fiber.Ctx, invite bool) error {
 	state, err := randomID()
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not start sign-in.")
 	}
 	s.setCookie(c, stateCookie, state, time.Now().Add(10*time.Minute))
-	return c.Redirect(discordAuthorizeURL(s.cfg.DiscordClientID, s.cfg.PublicURL+"/auth/discord/callback", state), fiber.StatusFound)
+	return c.Redirect(discordAuthorizeURL(s.cfg.DiscordClientID, s.cfg.PublicURL+"/auth/discord/callback", state, invite), fiber.StatusFound)
 }
 
 func (s *Server) finishLogin(c *fiber.Ctx) error {
@@ -318,9 +336,19 @@ func (s *Server) requireGuild(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusNotFound, "Unknown server.")
 	}
 	session := c.Locals("session").(store.Session)
-	perms, ok := s.permissions(c, session, guildID)
-	if !ok || !domain.CanManageGuild(perms) {
-		return fail(c, fiber.StatusForbidden, "You need Manage Server on that Discord server.")
+	perms, inGuild := s.permissions(c, session, guildID)
+	manageServer := inGuild && domain.CanManageGuild(perms)
+	if !manageServer {
+		if !inGuild {
+			return fail(c, fiber.StatusForbidden, "You need Manage Server, or a role chosen for dashboard access.")
+		}
+		allowed, err := s.holdsManagerRole(c, guildID, session.UserID)
+		if err != nil {
+			return managerRoleError(c, err)
+		}
+		if !allowed {
+			return fail(c, fiber.StatusForbidden, "You need Manage Server, or a role chosen for dashboard access.")
+		}
 	}
 	if _, err := s.store.GetGuild(c.UserContext(), guildID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -330,7 +358,51 @@ func (s *Server) requireGuild(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusInternalServerError, "Could not load that server.")
 	}
 	c.Locals("guildID", guildID)
+	c.Locals("manageServer", manageServer)
 	return c.Next()
+}
+
+// holdsManagerRole is true when the member has a role saved for dashboard access.
+// OAuth guild permissions do not include role ids, so the bot looks the member up.
+func (s *Server) holdsManagerRole(c *fiber.Ctx, guildID, userID string) (bool, error) {
+	allowed, err := s.store.ManagerRoleIDs(c.UserContext(), guildID)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && len(allowed) == 0) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	held, err := s.memberRoleIDs(guildID, userID)
+	if err != nil {
+		return false, err
+	}
+	return domain.SharesRole(held, allowed), nil
+}
+
+func (s *Server) memberRoleIDs(guildID, userID string) ([]string, error) {
+	if ids, ok := s.roles.get(guildID, userID); ok {
+		return ids, nil
+	}
+	if err := s.requireBot(); err != nil {
+		return nil, err
+	}
+	member, err := s.bot.Session().GuildMember(guildID, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := member.Roles
+	if ids == nil {
+		ids = []string{}
+	}
+	s.roles.set(guildID, userID, ids)
+	return ids, nil
+}
+
+func managerRoleError(c *fiber.Ctx, err error) error {
+	if err != nil && err.Error() == "The bot is still connecting to Discord." {
+		return fail(c, fiber.StatusServiceUnavailable, err.Error())
+	}
+	return fail(c, fiber.StatusBadGateway, "Discord could not confirm your roles in that server.")
 }
 
 func (s *Server) permissions(c *fiber.Ctx, session store.Session, guildID string) (int64, bool) {
@@ -386,11 +458,17 @@ func (s *Server) guilds(c *fiber.Ctx) error {
 			bits |= domain.PermAdministrator
 		}
 		cached[guild.ID] = bits
-		if !domain.CanManageGuild(bits) {
-			continue
-		}
 		if _, err := s.store.GetGuild(c.UserContext(), guild.ID); err != nil {
 			continue
+		}
+		if !domain.CanManageGuild(bits) {
+			allowed, err := s.holdsManagerRole(c, guild.ID, session.UserID)
+			if err != nil || !allowed {
+				if err != nil {
+					s.log.Warn("dashboard role", "guild", guild.ID, "err", err)
+				}
+				continue
+			}
 		}
 		out = append(out, item{ID: guild.ID, Name: guild.Name, IconURL: iconURL(guild.ID, guild.Icon)})
 	}
@@ -481,4 +559,41 @@ func (c *accessCache) drop(sessionID string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.items, sessionID)
+}
+
+type memberRoleCache struct {
+	mu    sync.Mutex
+	items map[string]memberRoleEntry
+}
+
+type memberRoleEntry struct {
+	roles []string
+	exp   time.Time
+}
+
+func newMemberRoleCache() *memberRoleCache {
+	return &memberRoleCache{items: map[string]memberRoleEntry{}}
+}
+
+func memberRoleKey(guildID, userID string) string {
+	return guildID + "/" + userID
+}
+
+func (c *memberRoleCache) get(guildID, userID string) ([]string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry, ok := c.items[memberRoleKey(guildID, userID)]
+	if !ok || time.Now().After(entry.exp) {
+		return nil, false
+	}
+	return entry.roles, true
+}
+
+func (c *memberRoleCache) set(guildID, userID string, roles []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.items) > 500 {
+		c.items = map[string]memberRoleEntry{}
+	}
+	c.items[memberRoleKey(guildID, userID)] = memberRoleEntry{roles: roles, exp: time.Now().Add(45 * time.Second)}
 }

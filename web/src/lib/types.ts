@@ -113,6 +113,8 @@ export type Bundle = {
 	logging: LogConfig;
 	escalationRoles: EscalationRole[];
 	starboard: Starboard;
+	managerRoleIds: string[];
+	manageServer: boolean;
 };
 
 export type ModCase = {
