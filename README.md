@@ -80,9 +80,9 @@ Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Post
 
 ## Releases
 
-Pull requests run the tests. Merging a pull request into `main` tags that commit and publishes a GitHub release. The first release is `v0.1.0`. Later merged pull requests increment the patch number. Add `[skip release]` to the pull request title, the pull request body, or the commit message to skip publishing. A direct push to `main` does not publish a release.
+Pull requests run the tests. Merging a pull request into `main` publishes a GitHub release. The first release is `v0.1.0`. Later merged pull requests increment the patch number. Add `[skip release]` to the pull request title, the pull request body, or the commit message to skip publishing. A direct push to `main` does not publish a release.
 
-CI pushes a tag. It does not push commits to `main`.
+CI sets `version` and `appVersion` in `deploy/helm/squirrelbot/Chart.yaml`, commits that file, and tags the new commit. The chart commit message contains `[skip release]`. The release job needs permission to push to `main`.
 
 Each release includes:
 

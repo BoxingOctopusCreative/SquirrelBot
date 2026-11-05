@@ -1,6 +1,7 @@
-SquirrelBot is a single replica. The Discord gateway rejects a second session for the same bot token, so this chart sets replicas to 1 and uses the Recreate strategy.
+SquirrelBot is an open source alternative to Discord moderator bots like MEE6, Dyno, and Carl-Bot 
 
 Open {{ .Values.publicUrl }} after the pod is Ready.
 The dashboard redirect URI is {{ .Values.publicUrl }}/auth/discord/callback.
 
+The Discord gateway rejects a second session for the same bot token, so this chart sets replicas to 1 and uses the Recreate strategy.
 Enable the Server Members and Message Content intents on the bot, and place the bot's role above every role it assigns.
