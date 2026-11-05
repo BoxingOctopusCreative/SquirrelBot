@@ -3,7 +3,7 @@ fullnameOverride: ""
 
 image:
   repository: squirrelbot
-  tag: ""
+  tag: latest
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

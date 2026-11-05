@@ -50,7 +50,7 @@ Copy `.env.example` to `.env` and fill in the Discord token, OAuth client id, OA
 
 `make dev` starts Postgres, Air, and the dashboard at `http://localhost:5173`. Air rebuilds the bot when Go files, SQL migrations, or `.env` change. `make bot` and `make web` start those processes on their own, after `make db`.
 
-`make build` writes `bin/squirrelbot` and `web/build`. `make image` builds the container `squirrelbot:0.1.0`. `make test` runs the Go unit tests. `make test-e2e` runs the API suite against Postgres and a Discord stand-in, then the browser suite against the dashboard. It starts the Compose Postgres if nothing is listening on port 5432.
+`make build` writes `bin/squirrelbot` and `web/build`. `make image` builds `squirrelbot:latest` and the next patch version. `make test` runs the Go unit tests. `make test-e2e` runs the API suite against Postgres and a Discord stand-in, then the browser suite against the dashboard. It starts the Compose Postgres if nothing is listening on port 5432.
 
 `make up` runs the bot and Postgres in Docker. In that mode the dashboard is served by the bot on port 8080, so set `PUBLIC_URL` to `http://localhost:8080`. `make down` stops those containers.
 
@@ -76,7 +76,7 @@ helm upgrade --install squirrelbot deploy/helm/squirrelbot \
 
 Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore. `postgres.sslMode` sets the libpq mode on `DATABASE_URL` when the chart writes that URL. The default is `disable`. An `sslmode` already present in `secrets.databaseUrl` is left as written.
 
-`make image` builds `squirrelbot:0.1.0` from the repository root. Override the tag with `make image IMAGE=squirrelbot:dev`. Set `imagePullSecrets` when the registry is private.
+`make image` builds `squirrelbot:latest` and the next patch version from the repository root. The first build is one patch above the chart app version. Later builds increment the patch again. The last version is stored in `build/image-version`. Set `imagePullSecrets` when the registry is private.
 
 ## Releases
 

@@ -29,7 +29,7 @@
 {{- end }}
 
 {{- define "squirrelbot.image" -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
+{{- $tag := .Values.image.tag | default "latest" }}
 {{- printf "%s:%s" .Values.image.repository $tag }}
 {{- end }}
 
