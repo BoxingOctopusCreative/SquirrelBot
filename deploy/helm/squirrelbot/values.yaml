@@ -25,13 +25,21 @@ secrets:
   discordClientSecret: ""
   sessionSecret: ""
 
+# enabled creates the Ingress. Set it to false to skip the Ingress.
+# className is the IngressClass. The default is traefik.
+# The host comes from publicUrl.
+# annotations are copied onto the Ingress.
+# tls asks Traefik to serve HTTPS. certResolver is the ACME resolver
+# in Traefik's static config. Traefik stores the certificate in
+# tlsSecretName. Clear certResolver to use a certificate that
+# already exists in that Secret.
 ingress:
-  enabled: false
-  className: ""
-  host: ""
+  enabled: true
+  className: traefik
   annotations: {}
-  tls: false
-  tlsSecretName: ""
+  tls: true
+  certResolver: letsencrypt
+  tlsSecretName: squirrelbot-tls
 
 resources:
   requests:
@@ -40,8 +48,16 @@ resources:
   limits:
     memory: 256Mi
 
+# bundled starts a Postgres StatefulSet for this release.
+# Leave it false and set secrets.databaseUrl for an external database.
+# sslMode is the libpq mode: disable, allow, prefer, require,
+# verify-ca, or verify-full. The bundled server does not terminate
+# TLS, so leave sslMode at disable for that database. For an external
+# database, an sslmode already in secrets.databaseUrl is kept. When
+# that URL omits sslmode, the chart adds this value.
 postgres:
-  enabled: false
+  bundled: false
+  sslMode: disable
   image: postgres:16-alpine
   auth:
     database: squirrelbot

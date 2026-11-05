@@ -74,7 +74,7 @@ helm upgrade --install squirrelbot deploy/helm/squirrelbot \
   --set secrets.sessionSecret=AT_LEAST_32_RANDOM_CHARACTERS
 ```
 
-Set `postgres.enabled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore.
+Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Postgres StatefulSet. That database is for a single cluster and a small server. Use an external Postgres for anything you need to restore. `postgres.sslMode` sets the libpq mode on `DATABASE_URL` when the chart writes that URL. The default is `disable`. An `sslmode` already present in `secrets.databaseUrl` is left as written.
 
 `make image` builds `squirrelbot:0.1.0` from the repository root. Override the tag with `make image IMAGE=squirrelbot:dev`. Set `imagePullSecrets` when the registry is private.
 

@@ -34,7 +34,7 @@ spec:
       containers:
         - name: squirrelbot
           image: {{ include "squirrelbot.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - name: http
               containerPort: 8080
