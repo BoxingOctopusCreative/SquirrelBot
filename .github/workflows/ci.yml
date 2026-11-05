@@ -428,6 +428,19 @@ jobs:
           fi
           git push origin "v${VERSION}"
 
+          chart_dir="${RUNNER_TEMP}/helm-index"
+          prev="${RUNNER_TEMP}/helm-index-prev"
+          rm -rf "$chart_dir" "$prev"
+          mkdir -p "$chart_dir" "$prev"
+          cp "dist/squirrelbot-${VERSION}.tgz" "$chart_dir/"
+          index_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}"
+          merge_args=()
+          if gh release download --pattern index.yaml --dir "$prev" --clobber >/dev/null 2>&1; then
+            merge_args=(--merge "$prev/index.yaml")
+          fi
+          helm repo index "$chart_dir" --url "$index_url" "${merge_args[@]}"
+          cp "$chart_dir/index.yaml" dist/index.yaml
+
           latest=$(git tag --list 'v*' --sort=-v:refname | awk -v current="v${VERSION}" '$0 != current && /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')
           notes="${RUNNER_TEMP}/notes.md"
           {
@@ -436,7 +449,8 @@ jobs:
             echo "Helm chart:"
             echo
             echo '```sh'
-            echo "helm upgrade --install squirrelbot oci://${CHART}/squirrelbot --version ${VERSION}"
+            echo "helm repo add squirrelbot https://github.com/${GITHUB_REPOSITORY}/releases/latest/download"
+            echo "helm upgrade --install squirrelbot squirrelbot/squirrelbot --version ${VERSION}"
             echo '```'
             echo
             echo "Binary archives include \`squirrelbot\`, \`web/build\`, and \`LICENSE\`. Extract an archive and run \`./squirrelbot\` from that directory."
@@ -455,6 +469,7 @@ jobs:
             --title "v${VERSION}" \
             --notes-file "$notes" \
             "dist/SHA256SUMS" \
+            "dist/index.yaml" \
             dist/squirrelbot_"${VERSION}"_*.tar.gz \
             "dist/squirrelbot-${VERSION}.tgz"
 

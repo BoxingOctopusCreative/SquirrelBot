@@ -60,7 +60,7 @@ Copy `.env.example` to `.env` and fill in the Discord token, OAuth client id, OA
 
 The chart is `deploy/helm/squirrelbot`. It runs one replica with the Recreate strategy, a read-only root filesystem, and a non-root user. Liveness is `/healthz`. Readiness is `/readyz`, which stays down until Postgres answers and the Discord gateway is ready.
 
-Supply secrets with `--set`, a private values file, or `existingSecret`. The secret keys are `DATABASE_URL`, `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `SESSION_SECRET`.
+`--set` and a private values file make the chart create the Secret. To use a Secret that already exists, set `existingSecret` to its name. The chart then mounts that Secret and does not create one. The keys are `DATABASE_URL`, `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `SESSION_SECRET`.
 
 `deploy/flux/squirrelbot-kustomization.yaml` is a Flux Kustomization for the published chart. It reconciles `deploy/flux/squirrelbot`. Create a Secret named `squirrelbot` in the `squirrelbot` namespace before the first reconcile, with those keys. Point `sourceRef` at your Flux GitRepository when it is not named `flux-system`. Pin `version` in the HelmRelease to stop automatic upgrades.
 
@@ -88,9 +88,15 @@ Each release includes:
 
 - Archives for Linux and macOS, on amd64 and arm64. An archive contains `squirrelbot`, `web/build`, and `LICENSE`. Extract it and run `./squirrelbot` from that directory.
 - The image `ghcr.io/boxingoctopuscreative/squirrelbot`, tagged with the version and with `latest`.
-- The Helm chart, attached to the GitHub release and published to `oci://ghcr.io/boxingoctopuscreative/charts/squirrelbot`.
+- The Helm chart, attached to the GitHub release and published to `oci://ghcr.io/boxingoctopuscreative/charts/squirrelbot`. Each release also carries an `index.yaml`, so Helm can add the release archive as a chart repository.
 
 The published chart uses that GHCR image. The chart in this repository keeps the local image name `squirrelbot`, which matches `make image`. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
+
+```sh
+helm repo add squirrelbot https://github.com/BoxingOctopusCreative/SquirrelBot/releases/latest/download
+helm repo update
+helm upgrade --install squirrelbot squirrelbot/squirrelbot --version 0.1.0
+```
 
 CI sets the GHCR package visibility to match the repository.
 
