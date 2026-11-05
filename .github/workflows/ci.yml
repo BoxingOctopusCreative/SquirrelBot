@@ -220,6 +220,62 @@ jobs:
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
+      # Git pushes in this job authenticate as the squirrelbot-ci app.
+      - name: Authenticate git as squirrelbot-ci
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          APP_ID: ${{ secrets.RELEASE_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          app_id=$(printf '%s' "$APP_ID" | tr -d '[:space:]')
+          case "$app_id" in
+            ''|*[!0-9]*) echo "RELEASE_APP_ID must be the numeric app id." >&2; exit 1 ;;
+          esac
+          key_file=$(mktemp)
+          chmod 600 "$key_file"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$APP_PRIVATE_KEY" > "$key_file"
+          tr -d '\r' < "$key_file" > "${key_file}.unix"
+          mv "${key_file}.unix" "$key_file"
+          if ! grep -q 'BEGIN .*PRIVATE KEY' "$key_file"; then
+            echo "RELEASE_APP_PRIVATE_KEY is not a PEM private key." >&2
+            exit 1
+          fi
+          if [ "$(grep -cve '^[[:space:]]*$' "$key_file")" -eq 1 ]; then
+            perl -0pe 's/\\n/\n/g' "$key_file" > "${key_file}.pem"
+            mv "${key_file}.pem" "$key_file"
+          fi
+          b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s)
+          header=$(printf '%s' '{"alg":"RS256","typ":"JWT"}' | b64url)
+          payload=$(printf '{"iat":%s,"exp":%s,"iss":%s}' "$((now - 60))" "$((now + 540))" "$app_id" | b64url)
+          signature=$(printf '%s' "${header}.${payload}" | openssl dgst -sha256 -sign "$key_file" -binary | b64url)
+          jwt="${header}.${payload}.${signature}"
+          install_json=$(curl -sS \
+            -H "Authorization: Bearer ${jwt}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/installation")
+          install_id=$(printf '%s' "$install_json" | jq -r '.id // empty')
+          if [ -z "$install_id" ]; then
+            echo "squirrelbot-ci is not installed on this repository." >&2
+            exit 1
+          fi
+          token_json=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${jwt}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/app/installations/${install_id}/access_tokens")
+          token=$(printf '%s' "$token_json" | jq -r '.token // empty')
+          if [ -z "$token" ]; then
+            echo "Could not create an installation token." >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          basic=$(printf 'x-access-token:%s' "$token" | base64 -w0)
+          echo "::add-mask::${basic}"
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ${basic}"
+
       - name: Choose the version
         id: version
         if: steps.gate.outputs.skip != 'true'
