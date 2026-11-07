@@ -59,8 +59,10 @@ func TestDiscordAuthorizeInvitesManagedServers(t *testing.T) {
 		t.Fatal(err)
 	}
 	const changeNickname int64 = 1 << 26
-	if bits&changeNickname == 0 {
-		t.Fatal("invite is missing Change Nickname")
+	const attachFiles int64 = 1 << 15
+	const mentionRoles int64 = 1 << 17
+	if bits&changeNickname == 0 || bits&attachFiles == 0 || bits&mentionRoles == 0 {
+		t.Fatal("invite is missing Change Nickname, Attach Files, or Mention Everyone")
 	}
 	if query.Get("integration_type") != "0" {
 		t.Fatalf("integration_type %q", query.Get("integration_type"))

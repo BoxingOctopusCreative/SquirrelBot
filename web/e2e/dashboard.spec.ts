@@ -54,6 +54,7 @@ test.describe('dashboard', () => {
 			['Welcome', 'Welcome'],
 			['Reaction Roles', 'Reaction roles'],
 			['Starboard', 'Starboard'],
+			['Confessions', 'Confessions'],
 			['Commands', 'Commands']
 		];
 		const nav = page.getByRole('navigation', { name: 'Server sections' });
@@ -126,6 +127,23 @@ test.describe('dashboard', () => {
 		await expect(page.getByText(/Created #mod-logs/)).toBeVisible();
 		await page.getByRole('button', { name: 'Save logging' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
+	});
+
+	test('saves confession channels', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('link', { name: 'Confessions' }).click();
+		const names = page.getByPlaceholder('Channel name');
+		await names.nth(0).fill('confession-review');
+		await page.getByRole('button', { name: 'Create channel' }).nth(0).click();
+		await expect(page.getByText(/Created #confession-review/)).toBeVisible();
+		await names.nth(1).fill('confessions');
+		await page.getByRole('button', { name: 'Create channel' }).nth(1).click();
+		await expect(page.getByText(/Created #confessions/)).toBeVisible();
+		await page.getByRole('button', { name: 'Save confessions' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByLabel('Review channel')).toHaveValue(/.+/);
+		await expect(page.getByLabel('Confessions channel')).not.toHaveValue('');
 	});
 
 	test('saves the starboard', async ({ page }) => {

@@ -12,6 +12,8 @@ Reaction roles live in a channel the admin picks. SquirrelBot posts one message 
 
 Starboard reposts a message after enough reactions of the emoji an admin picks. The default emoji is ⭐ and the default limit is 3. A member's reaction on their own message does not count unless the server allows it. Images from NSFW channels stay out unless that is turned on. Channels on the ignore list are skipped, and the starboard channel itself is never posted.
 
+Anonymous confessions start with `/confession`, or with the Submit a Confession button on an approved post. That button opens a form for the text and an optional file. The note goes to a review channel, tags the mod role, and shows Approve and Reject. An approved note is posted in the confessions channel without the author's name, with the same button for the next person. A review channel created from the dashboard is hidden from members. Moderators choose either channel in the dashboard, or with `/confession-review` and `/confession-channel`.
+
 Three jobs get extra attention:
 
 - **Announcements.** The mod team posts an embed now, or schedules it. A role ping is optional. Saved templates use Liquid. `{{ server }}` and `{{ author }}` are filled in when a template is used, and other values are passed in at that time.
@@ -23,10 +25,10 @@ Three jobs get extra attention:
 1. Create an application and a bot at the Discord developer portal.
 2. Turn on the **Server Members Intent** and the **Message Content Intent**.
 3. Add this redirect: `{PUBLIC_URL}/auth/discord/callback`.
-4. Sign in from the dashboard. Discord signs you in and lists servers where SquirrelBot is already installed and you have Manage Server, or a role saved under Access. Someone with Manage Server chooses those roles. Use Add a server when you want Discord to install the bot on another server you manage. The permission integer is `1099847265366` (view channels, send messages, embed links, read history, manage messages, manage channels, add reactions, change nickname, kick, ban, manage roles, and moderate members). Change Nickname lets the bot use a display name on that server. Add the server again if an older invite is missing it. The same install, without signing in, is:
+4. Sign in from the dashboard. Discord signs you in and lists servers where SquirrelBot is already installed and you have Manage Server, or a role saved under Access. Someone with Manage Server chooses those roles. Use Add a server when you want Discord to install the bot on another server you manage. The permission integer is `1099847429206` (view channels, send messages, embed links, attach files, read history, mention roles, manage messages, manage channels, add reactions, change nickname, kick, ban, manage roles, and moderate members). Change Nickname lets the bot use a display name on that server. Mention roles lets a confession tag the mod role. Attach files lets an approved confession keep an uploaded file. Add the server again if an older invite is missing either permission. The same install, without signing in, is:
 
 ```text
-https://discord.com/oauth2/authorize?client_id=CLIENT_ID&permissions=1099847265366&integration_type=0&scope=bot%20applications.commands
+https://discord.com/oauth2/authorize?client_id=CLIENT_ID&permissions=1099847429206&integration_type=0&scope=bot%20applications.commands
 ```
 
 Put the bot's role above every role it assigns. Escalation only grants roles on the allowlist.
@@ -40,6 +42,8 @@ Slash commands:
 | `/purge` `/slowmode` | Clean a channel or set its slowmode |
 | `/announce` | Post or schedule a mod team announcement |
 | `/escalate` `/deescalate` `/escalations` | Lend an allowlisted role, end it, or list who has one |
+| `/confession` | Send an anonymous confession for moderators to review |
+| `/confession-review` `/confession-channel` | Choose the review channel or the public confessions channel |
 | `/gate` | Show application status, or post the application message |
 
 Prefix commands use the prefix from Welcome, default `!`. A saved command is a Lua 5.1 script. `reply` sends one message, and returning a string does the same when `reply` is not called. `liquid` fills `{{ author.name }}`, `{{ author.id }}`, `{{ author.display_name }}`, `{{ args }}`, `{{ guild.name }}`, and `{{ prefix }}`. `react` and `delete` act on the invoking message. `addRole` and `removeRole` only change roles selected for that command. Older commands that are plain text still send that text until you save them again.

@@ -54,6 +54,10 @@ func SetupPurpose(purpose string) (topic string, private bool, ok bool) {
 		return "Click a reaction to get a role.", false, true
 	case "starboard":
 		return "Messages that earned enough stars.", false, true
+	case "confession-review":
+		return "Confessions waiting for a moderator.", true, true
+	case "confessions":
+		return "Anonymous confessions.", false, true
 	default:
 		return "", false, false
 	}

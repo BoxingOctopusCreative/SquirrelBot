@@ -69,7 +69,7 @@ func (v *jsonIntString) UnmarshalJSON(data []byte) error {
 	return errors.New("expected a string or number")
 }
 
-const botInvitePermissions = "1099847265366"
+const botInvitePermissions = "1099847429206"
 
 const (
 	// loginScopes identifies the user and lists servers they can manage.
