@@ -139,6 +139,7 @@ func (s *Server) routes() {
 	guild.Put("/automod", s.putAutomod)
 	guild.Put("/logging", s.putLogging)
 	guild.Put("/starboard", s.putStarboard)
+	guild.Put("/confessions", s.putConfessions)
 	guild.Post("/channels", s.createSetupChannel)
 	guild.Post("/roles", s.createRole)
 	guild.Get("/reaction-roles", s.reactionRoles)

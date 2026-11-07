@@ -93,6 +93,10 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load the starboard.")
 	}
+	confessions, err := s.store.GetConfessionConfig(ctx, guildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load confessions.")
+	}
 	managerRoles, err := s.store.ManagerRoleIDs(ctx, guildID)
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load dashboard access.")
@@ -102,6 +106,7 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 		"guild": guild, "counts": counts, "nextKick": nextKick,
 		"channels": channels, "roles": roles, "emojis": emojis, "gate": gate, "automod": automod,
 		"logging": logs, "escalationRoles": escalationRoles, "starboard": starboard,
+		"confessions":    confessions,
 		"managerRoleIds": managerRoles, "manageServer": manageServer,
 	})
 }
@@ -581,6 +586,25 @@ func (s *Server) putStarboard(c *fiber.Ctx) error {
 	return c.JSON(saved)
 }
 
+func (s *Server) putConfessions(c *fiber.Ctx) error {
+	var cfg store.ConfessionConfig
+	if err := c.BodyParser(&cfg); err != nil {
+		return fail(c, fiber.StatusBadRequest, "Could not read that request.")
+	}
+	cfg.GuildID = c.Params("guildID")
+	if err := domain.ValidateConfessionChannels(cfg.ReviewChannelID, cfg.ChannelID); err != nil {
+		return fail(c, fiber.StatusBadRequest, err.Error())
+	}
+	if err := s.store.SaveConfessionConfig(c.UserContext(), cfg); err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save confessions.")
+	}
+	saved, err := s.store.GetConfessionConfig(c.UserContext(), cfg.GuildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save confessions.")
+	}
+	return c.JSON(saved)
+}
+
 func (s *Server) createSetupChannel(c *fiber.Ctx) error {
 	var body struct {
 		Name    string `json:"name"`
@@ -595,7 +619,7 @@ func (s *Server) createSetupChannel(c *fiber.Ctx) error {
 	}
 	topic, private, ok := domain.SetupPurpose(body.Purpose)
 	if !ok {
-		return fail(c, fiber.StatusBadRequest, "Choose logging, announcements, or roles.")
+		return fail(c, fiber.StatusBadRequest, "Choose a channel the dashboard can create.")
 	}
 	spec := domain.SetupChannel{Name: name, Topic: topic, Private: private}
 	if err := s.requireBot(); err != nil {

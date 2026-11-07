@@ -285,6 +285,18 @@ func TestDashboardJourney(t *testing.T) {
 		t.Fatalf("starboard %s", body)
 	}
 
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/confessions", map[string]any{
+		"reviewChannelId": harness.GeneralChannelID, "channelId": harness.GeneralChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/confessions", map[string]any{
+		"reviewChannelId": harness.GeneralChannelID, "channelId": harness.AnnounceChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["reviewChannelId"] != harness.GeneralChannelID || asMap(t, body)["channelId"] != harness.AnnounceChannelID {
+		t.Fatalf("confessions %s", body)
+	}
+
 	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/profile", nil, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	if asMap(t, body)["username"] != "squirrelbot" {
