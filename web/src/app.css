@@ -192,6 +192,21 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .member-menu button:hover,
 .member-menu button[aria-selected='true'] { background: var(--panel); }
 
+.legal { min-height: 100vh; display: flex; flex-direction: column; }
+.legal-nav { display: flex; gap: 1rem; }
+.legal-nav a { text-decoration: none; color: var(--mist); }
+.legal-nav a[aria-current='page'] { color: var(--lichen); }
+.legal-body { flex: 1; }
+.legal-body h2 { font-size: 1.25rem; margin: 1.35rem 0 0.4rem; }
+.legal-body p, .legal-body li { color: var(--mist); }
+.legal-body a { color: var(--copper); }
+.legal-body ul { margin: 0.2rem 0 0; padding-left: 1.15rem; display: grid; gap: 0.4rem; }
+.legal-body code { font-family: var(--mono); font-size: 0.9em; }
+.legal-foot { padding: 1.2rem 1.5rem 2rem; color: var(--mist); border-top: 1px solid var(--line); }
+.legal-foot a { color: var(--copper); }
+.legal-links { display: flex; gap: 1rem; margin: 0.2rem 0 0; }
+.legal-links a { color: var(--mist); }
+
 @media (max-width: 860px) {
 	.login { grid-template-columns: 1fr; }
 	.login-aside { border-left: 0; border-top: 1px solid var(--line); min-height: 12rem; }

@@ -24,7 +24,7 @@ Three jobs get extra attention:
 
 1. Create an application and a bot at the Discord developer portal.
 2. Turn on the **Server Members Intent** and the **Message Content Intent**.
-3. Add this redirect: `{PUBLIC_URL}/auth/discord/callback`.
+3. Add this redirect: `{PUBLIC_URL}/auth/discord/callback`. The public Terms of Service are at `{PUBLIC_URL}/terms`. The public Privacy Policy is at `{PUBLIC_URL}/privacy`. Discord application verification asks for both URLs.
 4. Sign in from the dashboard. Discord signs you in and lists servers where SquirrelBot is already installed and you have Manage Server, or a role saved under Access. Someone with Manage Server chooses those roles. Use Add a server when you want Discord to install the bot on another server you manage. The permission integer is `1099847429206` (view channels, send messages, embed links, attach files, read history, mention roles, manage messages, manage channels, add reactions, change nickname, kick, ban, manage roles, and moderate members). Change Nickname lets the bot use a display name on that server. Mention roles lets a confession tag the mod role. Attach files lets an approved confession keep an uploaded file. Add the server again if an older invite is missing either permission. The same install, without signing in, is:
 
 ```text

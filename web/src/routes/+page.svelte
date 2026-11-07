@@ -33,6 +33,10 @@
 			</a>
 			<a class="button quiet" href="/auth/discord/invite">Add SquirrelBot to a server</a>
 			<p class="hint">Sign in to open servers where SquirrelBot is already installed. Add it to a new server when you need to.</p>
+			<p class="legal-links">
+				<a href="/terms">Terms of Service</a>
+				<a href="/privacy">Privacy Policy</a>
+			</p>
 		</div>
 	</aside>
 </main>
