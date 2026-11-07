@@ -11,8 +11,20 @@ test.describe('signed out', () => {
 		await page.goto('/');
 		await expect(page.getByRole('link', { name: 'Continue with Discord' })).toHaveAttribute('href', '/auth/discord');
 		await expect(page.getByRole('link', { name: 'Add SquirrelBot to a server' })).toHaveAttribute('href', '/auth/discord/invite');
+		await expect(page.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+		await expect(page.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
 		await expect(page.getByText('Sign in to open servers where SquirrelBot is already installed.')).toBeVisible();
 		await expect(page.getByText('Moderation Without Enshittification.')).toBeVisible();
+	});
+
+	test('terms and privacy are public', async ({ page }) => {
+		await page.goto('/terms');
+		await expect(page.getByRole('heading', { name: 'Terms of Service' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
+		await page.goto('/privacy');
+		await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+		await expect(page.getByText('sb_session')).toBeVisible();
+		await expect(page.getByText('Message Content')).toBeVisible();
 	});
 
 	test('a refused sign-in shows the banner', async ({ page }) => {
