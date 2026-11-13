@@ -116,7 +116,7 @@ Each release includes:
 - The image `ghcr.io/boxingoctopuscreative/squirrelbot`, tagged with the version and with `latest`.
 - The Helm chart, attached to the GitHub release and published to `oci://ghcr.io/boxingoctopuscreative/charts/squirrelbot`. Each release also carries an `index.yaml`, so Helm can add the release archive as a chart repository.
 
-The chart pulls `ghcr.io/boxingoctopuscreative/squirrelbot`. `make image` builds the local name `squirrelbot`. Set `image.repository=squirrelbot` to use that image. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
+The chart pulls `ghcr.io/boxingoctopuscreative/squirrelbot` tagged with the chart app version. `make image` builds the local name `squirrelbot`. Set `image.repository=squirrelbot` and `image.tag` to use that image. Install the published chart with the same `--set` values as the local chart, and set `--version` to the release you want.
 
 ```sh
 helm repo add squirrelbot https://github.com/BoxingOctopusCreative/SquirrelBot/releases/latest/download
