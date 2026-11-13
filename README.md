@@ -84,9 +84,31 @@ Set `postgres.bundled=true` and `postgres.auth.password` to start a bundled Post
 
 ## Releases
 
-Pull requests run the tests. Merging a pull request into `main` publishes a GitHub release. The first release is `v0.1.0`. Later merged pull requests increment the patch number. Add `[skip release]` to the pull request title, the pull request body, or the commit message to skip publishing. A direct push to `main` does not publish a release.
+Every pull request merged into `main` is released. A pull request runs formatting, vet, unit tests with the race detector, end-to-end tests, and a Helm chart lint. It also builds the container image. The release workflow runs the tests again, then publishes the container image, the Helm chart, and the binary archives. Releases run one at a time, in merge order.
 
-CI sets `version` and `appVersion` in `deploy/helm/squirrelbot/Chart.yaml`, commits that file as the squirrelbot-ci app, and tags the new commit. The chart commit message contains `[skip release]`. That app is the one allowed to push to `main`.
+A label on the pull request picks the version bump:
+
+| Label | Effect |
+| --- | --- |
+| `release:major` | v0.1.8 becomes v1.0.0 |
+| `release:minor` | v0.1.8 becomes v0.2.0 |
+| `release:patch` | v0.1.8 becomes v0.1.9, and so does a pull request with no release label |
+| `release:none` | Merge without publishing a release |
+
+The first release is `v0.1.0`. A `release:major` label on that first pull request publishes `v1.0.0`. A check on each pull request fails when it has more than one of these labels, and the check says what merging it will release.
+
+A release is published from a merged pull request, or from a manual run of the Release workflow. Open Actions, choose Release, and run the workflow. The manual run chooses the bump.
+
+To create the labels once:
+
+```sh
+gh label create release:major --color B60205 --description "Breaking change: bump the major version"
+gh label create release:minor --color FBCA04 --description "New feature: bump the minor version"
+gh label create release:patch --color 0E8A16 --description "Fix: bump the patch version (the default)"
+gh label create release:none  --color CCCCCC --description "Merge without making a release"
+```
+
+The release tags the merge commit. It sets `version` and `appVersion` on the Helm chart it publishes. `deploy/helm/squirrelbot/Chart.yaml` on `main` stays as it was in that merge.
 
 Each release includes:
 

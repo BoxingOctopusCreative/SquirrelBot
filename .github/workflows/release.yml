@@ -1,0 +1,318 @@
+name: Release
+
+# Every pull request merged into main is released. Its label picks the
+# version bump: release:major, release:minor or release:patch (the default
+# when there's none), or release:none to skip releasing it.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: read
+
+# Releases go out one at a time, in merge order, so versions never collide.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      bump: ${{ steps.version.outputs.bump }}
+      version: ${{ steps.version.outputs.version }}
+      semver: ${{ steps.version.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Choose the version bump
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          INPUT_BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Releases are made from main, not $GITHUB_REF"
+            exit 1
+          fi
+          if [ "$EVENT" = workflow_dispatch ]; then
+            echo "bump=$INPUT_BUMP" >> "$GITHUB_OUTPUT"
+            echo "Manual release: $INPUT_BUMP" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # The pull request this push merged, if any.
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0] // empty')
+          if [ -z "$pr" ]; then
+            echo "::notice::$GITHUB_SHA wasn't merged from a pull request; not releasing. Run this workflow by hand to release it."
+            echo "bump=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          number=$(jq -r .number <<<"$pr")
+          if ! bump=$(jq -r '.labels[].name' <<<"$pr" | scripts/release/bump-from-labels.sh 2>&1); then
+            echo "::error::#$number: $bump"
+            exit 1
+          fi
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+          echo "Merged #$number, so the bump is **$bump**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Work out the version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BUMP: ${{ steps.bump.outputs.bump }}
+        run: |
+          set -euo pipefail
+          if [ "$BUMP" = none ]; then
+            echo "bump=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch origin main --tags --force
+          head=$(git rev-parse HEAD)
+          latest=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+          if [ -n "$latest" ]; then
+            latest_sha=$(git rev-parse "${latest}^{}")
+            if [ "$latest_sha" = "$head" ]; then
+              if ! gh release view "$latest" >/dev/null 2>&1; then
+                echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+                echo "version=$latest" >> "$GITHUB_OUTPUT"
+                echo "semver=${latest#v}" >> "$GITHUB_OUTPUT"
+                echo "Finishing ${latest}. The tag exists and the GitHub release does not." >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+              if [ "$EVENT" != workflow_dispatch ]; then
+                echo "bump=none" >> "$GITHUB_OUTPUT"
+                echo "${latest} is already released." >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            fi
+          fi
+
+          version=$(scripts/release/next-version.sh "$latest" "$BUMP")
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "::error::$version is already tagged"
+            exit 1
+          fi
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "semver=${version#v}" >> "$GITHUB_OUTPUT"
+          echo "${latest:-no previous release} to **$version**" >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    name: Test
+    needs: plan
+    if: ${{ needs.plan.result == 'success' && needs.plan.outputs.bump != 'none' }}
+    uses: ./.github/workflows/test.yml
+
+  release:
+    name: Build and publish ${{ needs.plan.outputs.version }}
+    needs: [plan, test]
+    if: ${{ needs.plan.result == 'success' && needs.plan.outputs.bump != 'none' && needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Name the image and chart
+        id: names
+        run: |
+          set -euo pipefail
+          image="ghcr.io/$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          owner="${image#ghcr.io/}"
+          owner="${owner%%/*}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "chart=ghcr.io/${owner}/charts" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: azure/setup-helm@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build archives
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: scripts/release/build.sh "$VERSION" dist
+
+      - name: Set the chart version
+        env:
+          VERSION: ${{ needs.plan.outputs.semver }}
+          CHART: deploy/helm/squirrelbot/Chart.yaml
+        run: python3 scripts/release/set-chart-version.py
+
+      - name: Package the chart
+        env:
+          VERSION: ${{ needs.plan.outputs.semver }}
+        run: |
+          set -euo pipefail
+          chart_version=$(awk '/^version:/{print $2; exit}' deploy/helm/squirrelbot/Chart.yaml)
+          app_version=$(awk '/^appVersion:/{gsub(/"/,"",$2); print $2; exit}' deploy/helm/squirrelbot/Chart.yaml)
+          if [ "$chart_version" != "$VERSION" ] || [ "$app_version" != "$VERSION" ]; then
+            echo "Chart.yaml is ${chart_version} / ${app_version}, expected ${VERSION}." >&2
+            exit 1
+          fi
+          helm package deploy/helm/squirrelbot --destination dist
+          (
+            cd dist
+            sha256sum squirrelbot_"${VERSION}"_*.tar.gz "squirrelbot-${VERSION}.tgz" > SHA256SUMS
+          )
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.names.outputs.image }}:${{ needs.plan.outputs.semver }}
+            ${{ steps.names.outputs.image }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.plan.outputs.semver }}
+            org.opencontainers.image.licenses=MPL-2.0
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push the chart
+        env:
+          VERSION: ${{ needs.plan.outputs.semver }}
+          CHART: ${{ steps.names.outputs.chart }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+          if helm push "dist/squirrelbot-${VERSION}.tgz" "oci://${CHART}"; then
+            exit 0
+          fi
+          if helm show chart "oci://${CHART}/squirrelbot" --version "$VERSION" >/dev/null; then
+            echo "Chart ${VERSION} is already published."
+            exit 0
+          fi
+          exit 1
+
+      - name: Publish the GitHub release
+        env:
+          VERSION: ${{ needs.plan.outputs.semver }}
+          IMAGE: ${{ steps.names.outputs.image }}
+          CHART: ${{ steps.names.outputs.chart }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags --force
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "v${VERSION} is already released."
+            exit 0
+          fi
+
+          chart_dir="${RUNNER_TEMP}/helm-index"
+          prev="${RUNNER_TEMP}/helm-index-prev"
+          rm -rf "$chart_dir" "$prev"
+          mkdir -p "$chart_dir" "$prev"
+          cp "dist/squirrelbot-${VERSION}.tgz" "$chart_dir/"
+          index_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}"
+          merge_args=()
+          if gh release download --pattern index.yaml --dir "$prev" --clobber >/dev/null 2>&1; then
+            merge_args=(--merge "$prev/index.yaml")
+          fi
+          helm repo index "$chart_dir" --url "$index_url" "${merge_args[@]}"
+          cp "$chart_dir/index.yaml" dist/index.yaml
+
+          latest=$(git tag --list 'v*' --sort=-v:refname | awk -v current="v${VERSION}" '$0 != current && /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; exit }')
+          notes="${RUNNER_TEMP}/notes.md"
+          {
+            echo "Container image: \`${IMAGE}:${VERSION}\`"
+            echo
+            echo "Helm chart:"
+            echo
+            echo '```sh'
+            echo "helm repo add squirrelbot https://github.com/${GITHUB_REPOSITORY}/releases/latest/download"
+            echo "helm upgrade --install squirrelbot squirrelbot/squirrelbot --version ${VERSION}"
+            echo '```'
+            echo
+            echo "Binary archives include \`squirrelbot\`, \`web/build\`, and \`LICENSE\`. Extract an archive and run \`./squirrelbot\` from that directory."
+            echo
+            echo "Changes:"
+            echo
+            if [ -n "$latest" ]; then
+              log_range="${latest}..HEAD"
+            else
+              log_range="HEAD"
+            fi
+            git log --pretty=format:'- %s' "$log_range" \
+              | grep -v '^- Update the Helm chart to ' \
+              || true
+            echo
+          } > "$notes"
+
+          gh release create "v${VERSION}" \
+            --target "$GITHUB_SHA" \
+            --title "v${VERSION}" \
+            --notes-file "$notes" \
+            "dist/SHA256SUMS" \
+            "dist/index.yaml" \
+            dist/squirrelbot_"${VERSION}"_*.tar.gz \
+            "dist/squirrelbot-${VERSION}.tgz"
+
+      - name: Set package visibility
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VISIBILITY: ${{ github.event.repository.visibility }}
+          IMAGE: ${{ steps.names.outputs.image }}
+        run: |
+          set -euo pipefail
+          image_name="${IMAGE##*/}"
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          visibility=private
+          if [ "$VISIBILITY" = "public" ]; then
+            visibility=public
+          fi
+          for name in "$image_name" "charts/${image_name}"; do
+            gh api --method PATCH "/orgs/${owner}/packages/container/${name}" -f visibility="$visibility" \
+              || gh api --method PATCH "/users/${owner}/packages/container/${name}" -f visibility="$visibility" \
+              || echo "Could not set ${name} visibility to ${visibility}." >&2
+          done
