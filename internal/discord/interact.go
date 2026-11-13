@@ -27,14 +27,26 @@ func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate
 			_ = respondEphemeral(s, i, "Something went wrong while running that command.")
 		}
 	}()
+	if i == nil || i.Interaction == nil {
+		return
+	}
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
 		b.routeCommand(s, i)
 	case discordgo.InteractionMessageComponent:
-		if i.MessageComponentData().CustomID == "sb:verify" {
+		customID := i.MessageComponentData().CustomID
+		switch {
+		case customID == "sb:verify":
 			b.verifyMember(s, i)
+		case customID == confessionOpenID:
+			b.openConfessionForm(s, i)
+		case strings.HasPrefix(customID, "sb:confess:"):
+			b.reviewConfession(s, i)
 		}
 	case discordgo.InteractionModalSubmit:
+		if i.Data == nil {
+			return
+		}
 		if i.ModalSubmitData().CustomID == "sb:verify" {
 			b.submitVerification(s, i)
 		}
@@ -67,6 +79,12 @@ func (b *Bot) routeCommand(s *discordgo.Session, i *discordgo.InteractionCreate)
 		b.deescalate(s, i)
 	case "escalations":
 		b.listEscalations(s, i)
+	case "confession":
+		b.confess(s, i)
+	case "confession-review":
+		b.setConfessionReview(s, i)
+	case "confession-channel":
+		b.setConfessionBoard(s, i)
 	case "gate":
 		b.gateCommand(s, i)
 	default:

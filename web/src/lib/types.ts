@@ -84,6 +84,12 @@ export type EscalationRole = {
 	maxDurationSeconds: number;
 };
 
+export type ConfessionConfig = {
+	guildId: string;
+	reviewChannelId: string;
+	channelId: string;
+};
+
 export type Starboard = {
 	guildId: string;
 	enabled: boolean;
@@ -113,6 +119,7 @@ export type Bundle = {
 	logging: LogConfig;
 	escalationRoles: EscalationRole[];
 	starboard: Starboard;
+	confessions: ConfessionConfig;
 	managerRoleIds: string[];
 	manageServer: boolean;
 };
