@@ -1,0 +1,17 @@
+# Flux Kustomization for the published SquirrelBot chart.
+# Copy this into the cluster directory that Flux already reconciles, and point
+# sourceRef at that GitRepository. The default name flux-system matches flux bootstrap.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: squirrelbot
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./deploy/flux/squirrelbot
+  prune: true
+  wait: true
+  timeout: 5m

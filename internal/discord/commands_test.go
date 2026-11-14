@@ -21,4 +21,14 @@ func TestCommandPayloadOmitsNulls(t *testing.T) {
 	if len(commands) < 10 {
 		t.Fatalf("expected the moderation command set, got %d", len(commands))
 	}
+	names := map[string]bool{}
+	for _, command := range commands {
+		name, _ := command["name"].(string)
+		names[name] = true
+	}
+	for _, name := range []string{"confession", "confession-review", "confession-channel"} {
+		if !names[name] {
+			t.Fatalf("missing %s", name)
+		}
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/BoxingOctopus/squirrelbot/internal/domain"
+	"github.com/BoxingOctopus/squirrelbot/internal/script"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
 	"github.com/bwmarrin/discordgo"
 )
@@ -95,22 +96,52 @@ func (b *Bot) customCommand(s *discordgo.Session, m *discordgo.MessageCreate) bo
 	if !strings.HasPrefix(m.Content, guild.Prefix) {
 		return false
 	}
-	name := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(m.Content, guild.Prefix)))
-	if fields := strings.Fields(name); len(fields) > 0 {
-		name = fields[0]
-	}
-	if !domain.ValidCommandName(name) {
+	name, args, argsText, ok := splitCommand(m.Content, guild.Prefix)
+	if !ok || !domain.ValidCommandName(name) {
 		return false
 	}
 	cmd, err := b.store.GetCommand(ctx, m.GuildID, name)
 	if err != nil {
 		return false
 	}
-	_, err = s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
-		Content:         cmd.Response,
-		AllowedMentions: noMentions,
+	if cmd.Kind != script.KindLua {
+		return sendPlain(s, m.ChannelID, cmd.Response) == nil
+	}
+	allowed, err := b.commandRoles(m.GuildID, cmd.RoleIDs)
+	if err != nil {
+		b.log.Warn("custom command roles", "guild", m.GuildID, "name", name, "err", err)
+		_ = sendPlain(s, m.ChannelID, "That command failed. I could not read this server's roles.")
+		return true
+	}
+	authorName, display, roles := commandAuthor(m)
+	effects, err := script.Run(ctx, script.Input{
+		Source:        cmd.Response,
+		Kind:          cmd.Kind,
+		Prefix:        guild.Prefix,
+		Args:          args,
+		ArgsText:      argsText,
+		AuthorID:      m.Author.ID,
+		AuthorName:    authorName,
+		AuthorDisplay: display,
+		AuthorRoleIDs: roles,
+		ChannelID:     m.ChannelID,
+		GuildID:       m.GuildID,
+		GuildName:     guild.Name,
+		Allowed:       allowed,
 	})
-	return err == nil
+	if err != nil {
+		b.log.Warn("custom command", "guild", m.GuildID, "name", name, "err", err)
+		_ = sendPlain(s, m.ChannelID, "That command failed. "+script.ErrorText(err))
+		return true
+	}
+	for _, effect := range effects {
+		if err := b.applyCommandEffect(s, m, effect); err != nil {
+			b.log.Warn("custom command", "guild", m.GuildID, "name", name, "op", effect.Op, "err", err)
+			_ = sendPlain(s, m.ChannelID, "That command failed. "+publicEffectError(err))
+			return true
+		}
+	}
+	return true
 }
 
 func (b *Bot) automod(s *discordgo.Session, m *discordgo.MessageCreate) {

@@ -5,6 +5,7 @@
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Announcement, AnnouncementTemplate, Bundle } from '#lib/types';
 
@@ -177,7 +178,7 @@
 				channelId = channel.id;
 			}}
 		/>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>
 
@@ -219,7 +220,7 @@
 		<div class="actions">
 			<button type="submit" disabled={templateBusy}>{templateID === null ? 'Save template' : 'Update template'}</button>
 			{#if templateID !== null}<button class="quiet" type="button" onclick={clearTemplate}>Cancel</button>{/if}
-			{#if templateNotice}<span class="banner">{templateNotice}</span>{/if}
+			<Notice text={templateNotice} />
 		</div>
 	</form>
 	<Field label="Values for the next use" hint="One extra value per line, such as when=Tonight. Leave this empty when the template only needs server and author.">
@@ -237,7 +238,7 @@
 				<div class="actions">
 					<button type="button" onclick={() => useTemplate(item.id)}>Use</button>
 					<button class="quiet" type="button" onclick={() => editTemplate(item)}>Edit</button>
-					<button class="quiet" type="button" onclick={() => deleteTemplate(item.id)}>Delete</button>
+					<button class="danger" type="button" onclick={() => deleteTemplate(item.id)}>Delete</button>
 				</div>
 			</article>
 		{:else}
@@ -258,7 +259,7 @@
 			{#if item.status !== 'sent'}
 				<div class="actions">
 					<button type="button" onclick={() => sendNow(item.id)}>Send now</button>
-					<button class="quiet" type="button" onclick={() => remove(item.id)}>Delete</button>
+					<button class="danger" type="button" onclick={() => remove(item.id)}>Delete</button>
 				</div>
 			{/if}
 		</article>

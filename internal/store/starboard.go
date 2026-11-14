@@ -11,6 +11,7 @@ type Starboard struct {
 	GuildID           string   `json:"guildId"`
 	Enabled           bool     `json:"enabled"`
 	ChannelID         string   `json:"channelId"`
+	Emoji             string   `json:"emoji"`
 	Threshold         int      `json:"threshold"`
 	SelfStar          bool     `json:"selfStar"`
 	NSFW              bool     `json:"nsfw"`
@@ -29,15 +30,18 @@ func (s *Store) GetStarboard(ctx context.Context, guildID string) (Starboard, er
 	var board Starboard
 	var raw []byte
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, enabled, channel_id, threshold, self_star, nsfw, ignored_channel_ids
+		SELECT guild_id, enabled, channel_id, emoji, threshold, self_star, nsfw, ignored_channel_ids
 		FROM starboards WHERE guild_id = $1`, guildID).Scan(
-		&board.GuildID, &board.Enabled, &board.ChannelID, &board.Threshold, &board.SelfStar, &board.NSFW, &raw,
+		&board.GuildID, &board.Enabled, &board.ChannelID, &board.Emoji, &board.Threshold, &board.SelfStar, &board.NSFW, &raw,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Starboard{GuildID: guildID, Threshold: 3, IgnoredChannelIDs: []string{}}, nil
+		return Starboard{GuildID: guildID, Enabled: true, Emoji: "⭐", Threshold: 3, IgnoredChannelIDs: []string{}}, nil
 	}
 	if err != nil {
 		return Starboard{}, err
+	}
+	if board.Emoji == "" {
+		board.Emoji = "⭐"
 	}
 	board.IgnoredChannelIDs = decodeIDs(raw)
 	return board, nil
@@ -46,16 +50,17 @@ func (s *Store) GetStarboard(ctx context.Context, guildID string) (Starboard, er
 func (s *Store) SaveStarboard(ctx context.Context, board Starboard) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO starboards (
-			guild_id, enabled, channel_id, threshold, self_star, nsfw, ignored_channel_ids
-		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+			guild_id, enabled, channel_id, emoji, threshold, self_star, nsfw, ignored_channel_ids
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (guild_id) DO UPDATE SET
 			enabled = EXCLUDED.enabled,
 			channel_id = EXCLUDED.channel_id,
+			emoji = EXCLUDED.emoji,
 			threshold = EXCLUDED.threshold,
 			self_star = EXCLUDED.self_star,
 			nsfw = EXCLUDED.nsfw,
 			ignored_channel_ids = EXCLUDED.ignored_channel_ids`,
-		board.GuildID, board.Enabled, board.ChannelID, board.Threshold, board.SelfStar, board.NSFW, encodeIDs(board.IgnoredChannelIDs),
+		board.GuildID, board.Enabled, board.ChannelID, board.Emoji, board.Threshold, board.SelfStar, board.NSFW, encodeIDs(board.IgnoredChannelIDs),
 	)
 	return err
 }
