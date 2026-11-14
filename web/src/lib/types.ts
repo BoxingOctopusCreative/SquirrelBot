@@ -31,6 +31,7 @@ export type Counts = {
 	activeEscalations: number;
 	pendingGate: number;
 	cases: number;
+	openTickets: number;
 };
 
 export type Channel = { id: string; name: string; type: number };
@@ -84,14 +85,56 @@ export type EscalationRole = {
 	maxDurationSeconds: number;
 };
 
+export type ConfessionConfig = {
+	guildId: string;
+	reviewChannelId: string;
+	channelId: string;
+};
+
+export type TicketConfig = {
+	guildId: string;
+	panelChannelId: string;
+	categoryId: string;
+	supportRoleId: string;
+	logChannelId: string;
+	panelTitle: string;
+	panelBody: string;
+};
+
+export type Ticket = {
+	id: number;
+	number: number;
+	openerId: string;
+	openerName: string;
+	subject: string;
+	body: string;
+	status: string;
+	channelId: string;
+	claimerId: string;
+	claimerName: string;
+	closedById: string;
+	closedByName: string;
+	closeReason: string;
+	transcript: string;
+	createdAt: string;
+	closedAt?: string;
+};
+
 export type Starboard = {
 	guildId: string;
 	enabled: boolean;
 	channelId: string;
+	emoji: string;
 	threshold: number;
 	selfStar: boolean;
 	nsfw: boolean;
 	ignoredChannelIds: string[];
+};
+
+export type GuildEmoji = {
+	id: string;
+	name: string;
+	animated: boolean;
 };
 
 export type Bundle = {
@@ -99,12 +142,18 @@ export type Bundle = {
 	counts: Counts;
 	nextKick: string | null;
 	channels: Channel[];
+	categories: Channel[];
 	roles: Role[];
+	emojis: GuildEmoji[];
 	gate: Gate;
 	automod: Automod;
 	logging: LogConfig;
 	escalationRoles: EscalationRole[];
 	starboard: Starboard;
+	confessions: ConfessionConfig;
+	tickets: TicketConfig;
+	managerRoleIds: string[];
+	manageServer: boolean;
 };
 
 export type ModCase = {
@@ -171,6 +220,16 @@ export type ReactionRole = {
 export type CustomCommand = {
 	name: string;
 	response: string;
+	kind: string;
+	roleIds: string[];
+};
+
+export type BotProfile = {
+	nick: string;
+	username: string;
+	avatarUrl: string;
+	defaultAvatarUrl: string;
+	customAvatar: boolean;
 };
 
 export type MemberHit = {

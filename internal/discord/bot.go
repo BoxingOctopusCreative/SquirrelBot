@@ -3,7 +3,10 @@ package discord
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"log/slog"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -39,6 +42,7 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
+	ignoreUnknownComponentLogs()
 	session.Identify.Intents = discordgo.IntentGuilds |
 		discordgo.IntentGuildMembers |
 		discordgo.IntentGuildModeration |
@@ -63,6 +67,7 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 	session.AddHandler(bot.onReady)
 	session.AddHandler(bot.onGuildCreate)
 	session.AddHandler(bot.onInteraction)
+	session.AddHandler(bot.onGatewayEvent)
 	session.AddHandler(bot.onMessage)
 	session.AddHandler(bot.onJoin)
 	session.AddHandler(bot.onLeave)
@@ -77,11 +82,31 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 	return bot, nil
 }
 
+func ignoreUnknownComponentLogs() {
+	discordgo.Logger = func(level, caller int, format string, args ...interface{}) {
+		msg := fmt.Sprintf(format, args...)
+		if strings.Contains(msg, "unknown component type") {
+			return
+		}
+		pc, file, line, _ := runtime.Caller(caller + 1)
+		parts := strings.Split(file, "/")
+		file = parts[len(parts)-1]
+		name := runtime.FuncForPC(pc).Name()
+		names := strings.Split(name, ".")
+		name = names[len(names)-1]
+		log.Printf("[DG%d] %s:%d:%s() %s\n", level, file, line, name, msg)
+	}
+}
+
 func (b *Bot) Open() error { return b.session.Open() }
 
 func (b *Bot) Close() error { return b.session.Close() }
 
 func (b *Bot) Ready() bool { return b.ready.Load() }
+
+// SetReady records whether the gateway is connected.
+// The ready event sets this during a normal run. Tests set it when Discord is stubbed.
+func (b *Bot) SetReady(ready bool) { b.ready.Store(ready) }
 
 func (b *Bot) Session() *discordgo.Session { return b.session }
 

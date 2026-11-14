@@ -1,0 +1,28 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: squirrelbot
+  namespace: squirrelbot
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: squirrelbot
+      version: ">=0.1.0"
+      sourceRef:
+        kind: HelmRepository
+        name: squirrelbot
+        namespace: flux-system
+      interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    publicUrl: https://mod.example.com
+    existingSecret: squirrelbot
+    # A private image needs a pull secret in this namespace.
+    # imagePullSecrets:
+    #   - name: ghcr

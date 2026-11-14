@@ -25,6 +25,17 @@ export async function sendJSON<T>(path: string, method: string, body?: unknown):
 	return payload as T;
 }
 
+export async function sendForm<T>(path: string, method: string, body: FormData): Promise<T> {
+	const response = await fetch(path, {
+		method,
+		credentials: 'same-origin',
+		body
+	});
+	const payload = (await response.json().catch(() => ({}))) as { error?: string };
+	if (!response.ok) throw new Error(payload.error || 'Could not save.');
+	return payload as T;
+}
+
 export function when(value?: string | null): string {
 	if (!value) return '';
 	const date = new Date(value);

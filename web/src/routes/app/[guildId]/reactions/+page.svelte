@@ -6,6 +6,7 @@
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import CreateRole from '#lib/CreateRole.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, ReactionRole } from '#lib/types';
 
@@ -112,7 +113,7 @@
 		{#if channelId && channelId !== data.bundle.guild.reactionChannelId}
 			<button class="quiet" type="button" disabled={busy} onclick={saveChannel}>Save channel</button>
 		{/if}
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>
 <section class="list">
@@ -127,7 +128,7 @@
 				<strong>{item.emoji} · {roleName(item.roleId)}</strong>
 			</header>
 			<div class="actions">
-				<button class="quiet" type="button" onclick={() => remove(item.id)}>Delete</button>
+				<button class="danger" type="button" onclick={() => remove(item.id)}>Delete</button>
 			</div>
 		</article>
 	{:else}
