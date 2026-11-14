@@ -67,6 +67,7 @@ test.describe('dashboard', () => {
 			['Reaction Roles', 'Reaction roles'],
 			['Starboard', 'Starboard'],
 			['Confessions', 'Confessions'],
+			['Support tickets', 'Support tickets'],
 			['Commands', 'Commands']
 		];
 		const nav = page.getByRole('navigation', { name: 'Server sections' });
@@ -156,6 +157,31 @@ test.describe('dashboard', () => {
 		await page.reload();
 		await expect(page.getByLabel('Review channel')).toHaveValue(/.+/);
 		await expect(page.getByLabel('Confessions channel')).not.toHaveValue('');
+	});
+
+	test('saves support tickets and posts the panel', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Support tickets' }).click();
+		await page.getByLabel('Panel channel name').fill('ticket-panel');
+		await page.getByRole('button', { name: 'Create channel' }).nth(0).click();
+		await expect(page.getByText(/Created #ticket-panel/)).toBeVisible();
+		await page.getByLabel('Category name').fill('tickets');
+		await page.getByRole('button', { name: 'Create category' }).click();
+		await expect(page.getByText(/Created the tickets category/)).toBeVisible();
+		await page.getByLabel('Transcript channel name').fill('ticket-logs');
+		await page.getByRole('button', { name: 'Create channel' }).nth(1).click();
+		await expect(page.getByText(/Created #ticket-logs/)).toBeVisible();
+		await page.getByLabel('Support role').selectOption({ label: 'Mods' });
+		await page.getByRole('button', { name: 'Save and post the panel' }).click();
+		await expect(page.getByText('Message posted.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByRole('heading', { name: 'Support tickets', exact: true })).toBeVisible();
+		await expect(page.getByRole('combobox', { name: /Panel channel/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Ticket category/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Transcript channel/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Support role/ })).toHaveValue(/.+/);
+		await expect(page.getByRole('heading', { name: 'Open tickets' })).toBeVisible();
+		await expect(page.getByText('No open tickets.')).toBeVisible();
 	});
 
 	test('saves the starboard', async ({ page }) => {

@@ -22,6 +22,7 @@
 	let active = $state(0);
 
 	const listId = $derived(`member-list-${guildId}`);
+	const inputId = $derived(`member-query-${guildId}`);
 	const shown = $derived.by(() => {
 		const needle = query.trim().toLowerCase();
 		if (!typing || !needle) return members;
@@ -109,9 +110,10 @@
 <svelte:window onclick={onWindowClick} />
 
 <div class="field member-field">
-	<span id="{listId}-label">Find a member</span>
+	<label id="{listId}-label" for={inputId}>Find a member</label>
 	<div class="member-pick">
 		<input
+			id={inputId}
 			role="combobox"
 			aria-autocomplete="list"
 			aria-expanded={open}
@@ -130,7 +132,7 @@
 				{#if !ready}
 					<li class="hint">Loading members.</li>
 				{:else if loadError}
-					<li class="hint">{loadError}</li>
+					<li class="hint" role="status">{loadError}</li>
 				{:else if shown.length === 0}
 					<li class="hint">No members match.</li>
 				{:else}
@@ -156,5 +158,5 @@
 			</ul>
 		{/if}
 	</div>
-	{#if loadError && !open}<small>{loadError}</small>{/if}
+	{#if loadError && !open}<small role="status">{loadError}</small>{/if}
 </div>

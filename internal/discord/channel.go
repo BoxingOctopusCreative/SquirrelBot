@@ -43,6 +43,32 @@ func (b *Bot) EnsureTextChannel(guildID string, spec domain.SetupChannel, staffR
 	return channel.ID, channel.Name, true, nil
 }
 
+func (b *Bot) EnsureCategory(guildID, name string) (id, nameOut string, created bool, err error) {
+	channels, err := b.session.GuildChannels(guildID)
+	if err != nil {
+		return "", "", false, errors.New("I could not read this server's channels.")
+	}
+	for _, channel := range channels {
+		if channel.Type != discordgo.ChannelTypeGuildCategory {
+			continue
+		}
+		if strings.EqualFold(channel.Name, name) {
+			return channel.ID, channel.Name, false, nil
+		}
+	}
+	channel, err := b.session.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
+		Name: name,
+		Type: discordgo.ChannelTypeGuildCategory,
+	})
+	if err != nil {
+		if statusOf(err) == 403 {
+			return "", "", false, errors.New("I need Manage Channels to create that category.")
+		}
+		return "", "", false, errors.New("Discord refused that category.")
+	}
+	return channel.ID, channel.Name, true, nil
+}
+
 func (b *Bot) privateOverwrites(guildID string, staffRoleIDs []string, userID string) ([]*discordgo.PermissionOverwrite, error) {
 	botRoleID, err := b.ownRoleID(guildID)
 	if err != nil {

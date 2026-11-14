@@ -4,6 +4,7 @@
 	import { sendJSON, when } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Bundle, GateMember } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle; pending: GateMember[]; recent: GateMember[] } } = $props();
@@ -45,7 +46,7 @@
 				deadlineSeconds: deadlineHours * 3600,
 				warnBeforeSeconds: warnHours * 3600
 			});
-			notice = 'Saved.';
+			notice = 'Saved. Application updated.';
 			await refreshAll();
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
@@ -73,18 +74,24 @@
 
 <form class="panel" onsubmit={(event) => { event.preventDefault(); save(); }}>
 	<label class="check"><input type="checkbox" bind:checked={gate.enabled} /> Kick people who miss the deadline</label>
-	<Field label="Questions" hint="Age is always first and cannot be changed. Add up to 4 more. Each one can be 45 characters, which is Discord's limit for a form label.">
-		<input value="What is your age?" disabled />
+	<fieldset class="field">
+		<legend>Questions</legend>
+		<small>Age is always first and cannot be changed. Add up to 4 more. Each one can be 45 characters, which is Discord's limit for a form label.</small>
+		<div class="question-row">
+			<label for="age-question">Age question</label>
+			<input id="age-question" value="What is your age?" disabled />
+		</div>
 		{#each questions as _, index (index)}
 			<div class="question-row">
-				<input bind:value={questions[index]} maxlength="45" placeholder="Question" required />
+				<label for="question-{index}">Question {index + 2}</label>
+				<input id="question-{index}" bind:value={questions[index]} maxlength="45" placeholder="Question" required />
 				<button class="quiet" type="button" onclick={() => removeQuestion(index)}>Remove</button>
 			</div>
 		{/each}
 		{#if questions.length < 4}
 			<button class="quiet" type="button" onclick={addQuestion}>Add question</button>
 		{/if}
-	</Field>
+	</fieldset>
 	<div class="split">
 		<Field label="Hours to comply"><input type="number" min="1" max="720" bind:value={deadlineHours} /></Field>
 		<Field label="Warn this many hours before" hint="0 skips the warning."><input type="number" min="0" max="719" bind:value={warnHours} /></Field>
@@ -102,14 +109,14 @@
 	</fieldset>
 	<div class="actions">
 		<button type="submit" disabled={busy}>Save application</button>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>
 
 <section class="panel">
 	<h2>Application message</h2>
 	<p class="hint">Save first. Members press Answer questions and fill out the form. Posting in the same channel updates the current message.</p>
-	<ChannelSelect channels={data.bundle.channels} bind:value={panelChannel} allowEmpty={false} />
+	<Field label="Channel"><ChannelSelect channels={data.bundle.channels} bind:value={panelChannel} allowEmpty={false} /></Field>
 	<button type="button" onclick={postPanel}>Post message</button>
 </section>
 

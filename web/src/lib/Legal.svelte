@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
+	import ThemeToggle from '#lib/ThemeToggle.svelte';
 
 	let { title, children }: { title: string; children: Snippet } = $props();
 	let path = $derived(page.url.pathname);
@@ -15,8 +16,9 @@
 			<a href="/terms" aria-current={path === '/terms' ? 'page' : undefined}>Terms</a>
 			<a href="/privacy" aria-current={path === '/privacy' ? 'page' : undefined}>Privacy</a>
 		</nav>
+		<ThemeToggle />
 	</header>
-	<main class="main legal-body">
+	<main id="main" class="main legal-body" tabindex="-1">
 		<p class="kicker">SquirrelBot</p>
 		<h1>{title}</h1>
 		<p class="sub">Effective November 7, 2026. Boxing Octopus publishes SquirrelBot. These pages cover the dashboard and bot at this site.</p>

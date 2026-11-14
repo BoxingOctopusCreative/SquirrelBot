@@ -42,13 +42,18 @@ func (b *Bot) onInteraction(s *discordgo.Session, i *discordgo.InteractionCreate
 			b.openConfessionForm(s, i)
 		case strings.HasPrefix(customID, "sb:confess:"):
 			b.reviewConfession(s, i)
+		case strings.HasPrefix(customID, "sb:ticket:"):
+			b.ticketComponent(s, i)
 		}
 	case discordgo.InteractionModalSubmit:
 		if i.Data == nil {
 			return
 		}
-		if i.ModalSubmitData().CustomID == "sb:verify" {
+		switch customID := i.ModalSubmitData().CustomID; {
+		case customID == "sb:verify":
 			b.submitVerification(s, i)
+		case strings.HasPrefix(customID, "sb:ticket:"):
+			b.ticketModal(s, i)
 		}
 	}
 }

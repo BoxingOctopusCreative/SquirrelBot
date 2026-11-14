@@ -2,6 +2,7 @@
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
+	import Notice from '#lib/Notice.svelte';
 	import type { Role } from '#lib/types';
 
 	let {
@@ -17,6 +18,7 @@
 	let roleName = $state(untrack(() => defaultName));
 	let busy = $state(false);
 	let notice = $state('');
+	const inputId = $derived(`role-${guildId}`);
 
 	async function create() {
 		const typed = roleName.trim();
@@ -48,14 +50,19 @@
 	}
 </script>
 
-<input
-	class="role-name"
-	aria-label="Role name"
-	bind:value={roleName}
-	maxlength="100"
-	placeholder="Role name"
-	disabled={busy}
-	onkeydown={onKeydown}
-/>
-<button class="quiet" type="button" disabled={busy} onclick={create}>Create role</button>
-{#if notice}<span class="banner">{notice}</span>{/if}
+<div class="field">
+	<label for={inputId}>Role name</label>
+	<div class="actions">
+		<input
+			id={inputId}
+			class="role-name"
+			bind:value={roleName}
+			maxlength="100"
+			placeholder="Role name"
+			disabled={busy}
+			onkeydown={onKeydown}
+		/>
+		<button class="quiet" type="button" disabled={busy} onclick={create}>Create role</button>
+	</div>
+	<Notice text={notice} />
+</div>
