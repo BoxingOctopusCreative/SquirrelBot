@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Automod, Bundle } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle } } = $props();
@@ -71,6 +72,6 @@
 	</Field>
 	<div class="actions">
 		<button type="submit" disabled={busy}>Save automod</button>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

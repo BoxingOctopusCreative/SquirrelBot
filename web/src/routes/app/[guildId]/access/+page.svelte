@@ -4,6 +4,7 @@
 	import { sendJSON } from '#lib/api';
 	import CreateRole from '#lib/CreateRole.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Role } from '#lib/types';
 
@@ -33,7 +34,7 @@
 				{ roleIds }
 			);
 			roleIds = saved.roleIds;
-			notice = 'Saved.';
+			notice = 'Saved. Dashboard access updated.';
 			await refreshAll();
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
@@ -68,7 +69,7 @@
 		<div class="actions">
 			<button class="quiet" type="button" onclick={addRole}>Add role</button>
 			<button type="button" disabled={busy} onclick={save}>Save access</button>
-			{#if notice}<span class="banner">{notice}</span>{/if}
+			<Notice text={notice} />
 		</div>
 		<div class="list">
 			{#each roleIds as id (id)}

@@ -4,6 +4,7 @@
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Bundle, Starboard } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle } } = $props();
@@ -38,7 +39,7 @@
 				threshold: Number(board.threshold)
 			});
 			board = { ...saved, ignoredChannelIds: [...(saved.ignoredChannelIds ?? [])] };
-			notice = 'Saved.';
+			notice = 'Saved. Starboard updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -98,6 +99,6 @@
 	</Field>
 	<div class="actions">
 		<button type="submit" disabled={busy}>Save starboard</button>
-		{#if notice}<p class="notice">{notice}</p>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

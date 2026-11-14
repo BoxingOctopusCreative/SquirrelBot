@@ -6,7 +6,7 @@
 	<p>SquirrelBot is a Discord moderation bot and a dashboard for the people who run a server. Boxing Octopus publishes SquirrelBot. Signing in, adding the bot to a server, or using a command or button the bot provides means you agree to these terms and to the <a href="/privacy">Privacy Policy</a>.</p>
 
 	<h2>What the bot does</h2>
-	<p>Staff can warn, kick, ban, time out, and keep a case history. The bot can post announcements, lend a role for a limited time, ask new members to finish a server application, write logs into a channel the server chooses, run automod, offer reaction roles, repost starred messages, take anonymous confessions, and answer custom commands. Moderators on that server choose which of these are turned on.</p>
+	<p>Staff can warn, kick, ban, time out, and keep a case history. The bot can post announcements, lend a role for a limited time, ask new members to finish a server application, write logs into a channel the server chooses, run automod, offer reaction roles, repost starred messages, take anonymous confessions, open support tickets, and answer custom commands. Moderators on that server choose which of these are turned on.</p>
 
 	<h2>Discord accounts</h2>
 	<p>You sign in with Discord. Opening a server in the dashboard requires a Discord account and permission on that server. Installing the bot requires Manage Server. <a href="https://discord.com/terms">Discord's terms</a>, <a href="https://discord.com/guidelines">community guidelines</a>, and <a href="https://discord.com/developers/docs/policies-and-agreements/developer-terms-of-service">developer terms</a> also apply to your account, the server, and the bot.</p>
@@ -16,6 +16,9 @@
 
 	<h2>Confessions</h2>
 	<p>A confession goes to moderators before it is posted. The public post leaves the author's name off. Moderators can see who sent it, in the review channel and in the dashboard's records. You can attach one file. That file is posted in Discord with the confession. Send only text and files you have the right to share.</p>
+
+	<h2>Support tickets</h2>
+	<p>A ticket is a private channel between you and the support role that server chose. The subject, your request, and the messages in that channel are saved when the ticket is closed. Staff of that server can read the transcript in the dashboard. Send only text and files you have the right to share.</p>
 
 	<h2>Acceptable use</h2>
 	<p>Use the bot for the server that installed it. Do not use it to harass someone, to break into an account or a server, or to get around a limit the bot enforces. Follow the rules of the server you are in. Follow Discord's rules when you use the bot.</p>

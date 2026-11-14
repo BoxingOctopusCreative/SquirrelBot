@@ -13,7 +13,7 @@
 	{#each data.cases as item (item.id)}
 		<article class="item">
 			<header>
-				<strong>#{item.caseNumber} {item.action === 'gate_kick' ? 'application kick' : item.action}</strong>
+				<h2>#{item.caseNumber} {item.action === 'gate_kick' ? 'application kick' : item.action}</h2>
 				<span class="meta">{when(item.createdAt)}</span>
 			</header>
 			<p>{item.targetName || item.targetId}</p>

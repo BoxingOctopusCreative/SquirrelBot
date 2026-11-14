@@ -28,11 +28,12 @@
 		<a href={`/app/${id}/reactions`} aria-current={current(`/app/${id}/reactions`)}>Reaction Roles</a>
 		<a href={`/app/${id}/starboard`} aria-current={current(`/app/${id}/starboard`)}>Starboard</a>
 		<a href={`/app/${id}/confessions`} aria-current={current(`/app/${id}/confessions`)}>Confessions</a>
+		<a href={`/app/${id}/tickets`} aria-current={current(`/app/${id}/tickets`)}>Support tickets</a>
 		<a href={`/app/${id}/commands`} aria-current={current(`/app/${id}/commands`)}>Commands</a>
 	</nav>
-	<div class="main">
+	<main id="main" class="main" tabindex="-1">
 		{#key id}
 			{@render children()}
 		{/key}
-	</div>
+	</main>
 </div>

@@ -1,24 +1,27 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Mark from '#lib/Mark.svelte';
+	import ThemeToggle from '#lib/ThemeToggle.svelte';
 
 	let problem = $derived(page.url.searchParams.get('error'));
 </script>
 
 <svelte:head><title>SquirrelBot</title></svelte:head>
 
-<main class="login">
+<main id="main" class="login" tabindex="-1">
 	<section class="login-copy">
 		<div>
-			<img src="/squirrelbot_brandkit_square.svg" alt="SquirrelBot" />
+			<ThemeToggle />
+			<h1><img src="/squirrelbot_brandkit_square.svg" alt="SquirrelBot" /></h1>
 			<p class="lede">Moderation Without Enshittification.</p>
 			<ul class="jobs">
 				<li><strong>Mod team announcements</strong><span>Post once, in the channel you choose, now or later.</span></li>
 				<li><strong>Temporary staff</strong><span>Lend a mod or admin role, then take it back when the time ends.</span></li>
 				<li><strong>Server application</strong><span>Kick members who do not finish the questions in time.</span></li>
+				<li><strong>Support tickets</strong><span>A private channel for one member and the support role, with a transcript when it closes.</span></li>
 			</ul>
 		</div>
-		{#if problem}<p class="banner">Discord did not finish sign-in. Try again.</p>{/if}
+		{#if problem}<p class="banner" role="alert">Discord did not finish sign-in. Try again.</p>{/if}
 	</section>
 	<aside class="login-aside">
 		<div class="login-actions">
@@ -33,10 +36,12 @@
 			</a>
 			<a class="button quiet" href="/auth/discord/invite">Add SquirrelBot to a server</a>
 			<p class="hint">Sign in to open servers where SquirrelBot is already installed. Add it to a new server when you need to.</p>
-			<p class="legal-links">
-				<a href="/terms">Terms of Service</a>
-				<a href="/privacy">Privacy Policy</a>
-			</p>
+			<footer>
+				<p class="legal-links">
+					<a href="/terms">Terms of Service</a>
+					<a href="/privacy">Privacy Policy</a>
+				</p>
+			</footer>
 		</div>
 	</aside>
 </main>

@@ -4,6 +4,7 @@
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Bundle, ConfessionConfig } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle } } = $props();
@@ -22,7 +23,7 @@
 				$state.snapshot(cfg)
 			);
 			cfg = { ...saved };
-			notice = 'Saved.';
+			notice = 'Saved. Confessions updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -58,6 +59,6 @@
 	/>
 	<div class="actions">
 		<button type="submit" disabled={busy}>Save confessions</button>
-		{#if notice}<p class="notice">{notice}</p>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

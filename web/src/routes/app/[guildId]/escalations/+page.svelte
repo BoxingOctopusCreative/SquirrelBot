@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import MemberPick from '#lib/MemberPick.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Escalation, EscalationRole } from '#lib/types';
@@ -45,6 +46,10 @@
 	}
 
 	async function grant() {
+		if (!userId) {
+			notice = 'Choose a member before granting a role.';
+			return;
+		}
 		busy = true;
 		notice = '';
 		try {
@@ -124,8 +129,8 @@
 	<Field label="Duration" hint="Examples: 4h, 2d, 1w."><input bind:value={duration} required /></Field>
 	<Field label="Reason"><input bind:value={reason} required maxlength="400" /></Field>
 	<div class="actions">
-		<button type="submit" disabled={busy || !userId}>Grant role</button>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<button type="submit" disabled={busy}>Grant role</button>
+		<Notice text={notice} />
 	</div>
 </form>
 
