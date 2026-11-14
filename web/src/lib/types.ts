@@ -31,6 +31,7 @@ export type Counts = {
 	activeEscalations: number;
 	pendingGate: number;
 	cases: number;
+	openTickets: number;
 };
 
 export type Channel = { id: string; name: string; type: number };
@@ -90,6 +91,35 @@ export type ConfessionConfig = {
 	channelId: string;
 };
 
+export type TicketConfig = {
+	guildId: string;
+	panelChannelId: string;
+	categoryId: string;
+	supportRoleId: string;
+	logChannelId: string;
+	panelTitle: string;
+	panelBody: string;
+};
+
+export type Ticket = {
+	id: number;
+	number: number;
+	openerId: string;
+	openerName: string;
+	subject: string;
+	body: string;
+	status: string;
+	channelId: string;
+	claimerId: string;
+	claimerName: string;
+	closedById: string;
+	closedByName: string;
+	closeReason: string;
+	transcript: string;
+	createdAt: string;
+	closedAt?: string;
+};
+
 export type Starboard = {
 	guildId: string;
 	enabled: boolean;
@@ -112,6 +142,7 @@ export type Bundle = {
 	counts: Counts;
 	nextKick: string | null;
 	channels: Channel[];
+	categories: Channel[];
 	roles: Role[];
 	emojis: GuildEmoji[];
 	gate: Gate;
@@ -120,6 +151,7 @@ export type Bundle = {
 	escalationRoles: EscalationRole[];
 	starboard: Starboard;
 	confessions: ConfessionConfig;
+	tickets: TicketConfig;
 	managerRoleIds: string[];
 	manageServer: boolean;
 };

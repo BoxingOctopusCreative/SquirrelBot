@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { sendForm } from '#lib/api';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { BotProfile, Bundle } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle; profile: BotProfile } } = $props();
@@ -59,7 +60,7 @@
 			nick = profile.nick;
 			const input = avatarInput(form);
 			if (input) input.value = '';
-			notice = 'Saved.';
+			notice = 'Saved. Profile updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -100,6 +101,6 @@
 			<button class="quiet" type="button" disabled={busy} onclick={useUsualPicture}>Use the usual picture</button>
 		{/if}
 		{#if clearAvatar}<span class="hint">Save profile to use the usual picture.</span>{/if}
-		{#if notice}<span class="banner" class:ok={notice === 'Saved.'}>{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

@@ -58,7 +58,23 @@ func SetupPurpose(purpose string) (topic string, private bool, ok bool) {
 		return "Confessions waiting for a moderator.", true, true
 	case "confessions":
 		return "Anonymous confessions.", false, true
+	case "ticket-panel":
+		return "Open a support ticket here.", false, true
+	case "ticket-log":
+		return "Transcripts from closed support tickets.", true, true
 	default:
 		return "", false, false
 	}
+}
+
+// ClassifySetup describes a channel or category the dashboard can create.
+func ClassifySetup(purpose string) (kind, topic string, private, ok bool) {
+	if strings.EqualFold(strings.TrimSpace(purpose), "ticket-category") {
+		return "category", "", false, true
+	}
+	topic, private, ok = SetupPurpose(purpose)
+	if !ok {
+		return "", "", false, false
+	}
+	return "text", topic, private, true
 }

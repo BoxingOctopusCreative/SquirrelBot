@@ -14,6 +14,8 @@ Starboard reposts a message after enough reactions of the emoji an admin picks. 
 
 Anonymous confessions start with `/confession`, or with the Submit a Confession button on an approved post. That button opens a form for the text and an optional file. The note goes to a review channel, tags the mod role, and shows Approve and Reject. An approved note is posted in the confessions channel without the author's name, with the same button for the next person. A review channel created from the dashboard is hidden from members. Moderators choose either channel in the dashboard, or with `/confession-review` and `/confession-channel`.
 
+Support tickets start from a panel posted in a channel the server chooses. Open a ticket asks for a subject and what the member needs, then opens a private channel under a category for that member and the support role. The mod role and admin role can manage tickets too. Staff claim a ticket, then close it with a reason. Closing saves a transcript in the dashboard and posts a copy in the transcript channel. Reopen puts the ticket back. Delete asks for the ticket number, then removes the channel. Put the bot's role above the support role.
+
 Three jobs get extra attention:
 
 - **Announcements.** The mod team posts an embed now, or schedules it. A role ping is optional. Saved templates use Liquid. `{{ server }}` and `{{ author }}` are filled in when a template is used, and other values are passed in at that time.

@@ -8,6 +8,8 @@
 	let sentence = $derived.by(() => {
 		const parts: string[] = [];
 		if (counts.pendingGate > 0) parts.push(`${counts.pendingGate} people still need to finish the application`);
+		if (counts.openTickets === 1) parts.push('1 support ticket is open');
+		else if (counts.openTickets > 0) parts.push(`${counts.openTickets} support tickets are open`);
 		if (counts.activeEscalations > 0) parts.push(`${counts.activeEscalations} admin firecall grants are active`);
 		if (counts.scheduledAnnouncements > 0) parts.push(`${counts.scheduledAnnouncements} announcements are waiting to post`);
 		if (parts.length === 0) return 'Nothing is waiting on you.';
@@ -20,14 +22,17 @@
 <h1>On duty</h1>
 <p class="sub">{sentence}</p>
 <nav class="metrics" aria-label="Live work">
-	<a class={counts.scheduledAnnouncements > 0 ? 'hot' : ''} style:--tone="#d08a4a" href={`/app/${data.bundle.guild.id}/announcements`}>
+	<a class={counts.scheduledAnnouncements > 0 ? 'hot' : ''} style:--tone="var(--copper)" href={`/app/${data.bundle.guild.id}/announcements`}>
 		<b>{counts.scheduledAnnouncements}</b><span>Queued</span>
 	</a>
-	<a class={counts.activeEscalations > 0 ? 'hot' : ''} style:--tone="#d08a4a" href={`/app/${data.bundle.guild.id}/escalations`}>
+	<a class={counts.activeEscalations > 0 ? 'hot' : ''} style:--tone="var(--copper)" href={`/app/${data.bundle.guild.id}/escalations`}>
 		<b>{counts.activeEscalations}</b><span>On Duty</span>
 	</a>
-	<a class={counts.pendingGate > 0 ? 'hot' : ''} style:--tone="#e15d52" href={`/app/${data.bundle.guild.id}/verification`}>
+	<a class={counts.pendingGate > 0 ? 'hot' : ''} style:--tone="var(--berry)" href={`/app/${data.bundle.guild.id}/verification`}>
 		<b>{counts.pendingGate}</b><span>Applicants</span>
+	</a>
+	<a class={counts.openTickets > 0 ? 'hot' : ''} style:--tone="var(--foxfire)" href={`/app/${data.bundle.guild.id}/tickets`}>
+		<b>{counts.openTickets}</b><span>Tickets</span>
 	</a>
 </nav>
 {#if data.bundle.nextKick}

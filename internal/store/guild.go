@@ -123,6 +123,7 @@ type Counts struct {
 	ActiveEscalations      int `json:"activeEscalations"`
 	PendingGate            int `json:"pendingGate"`
 	Cases                  int `json:"cases"`
+	OpenTickets            int `json:"openTickets"`
 }
 
 func (s *Store) Counts(ctx context.Context, guildID string) (Counts, error) {
@@ -132,8 +133,9 @@ func (s *Store) Counts(ctx context.Context, guildID string) (Counts, error) {
 			(SELECT count(*) FROM announcements WHERE guild_id = $1 AND status = 'scheduled'),
 			(SELECT count(*) FROM escalations WHERE guild_id = $1 AND status = 'active'),
 			(SELECT count(*) FROM gate_members WHERE guild_id = $1 AND status = 'pending'),
-			(SELECT count(*) FROM mod_cases WHERE guild_id = $1)`, guildID).Scan(
-		&c.ScheduledAnnouncements, &c.ActiveEscalations, &c.PendingGate, &c.Cases,
+			(SELECT count(*) FROM mod_cases WHERE guild_id = $1),
+			(SELECT count(*) FROM tickets WHERE guild_id = $1 AND status = 'open')`, guildID).Scan(
+		&c.ScheduledAnnouncements, &c.ActiveEscalations, &c.PendingGate, &c.Cases, &c.OpenTickets,
 	)
 	return c, err
 }

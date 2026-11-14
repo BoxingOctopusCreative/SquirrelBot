@@ -167,10 +167,14 @@ func (d *discordFake) guildRoute(w http.ResponseWriter, r *http.Request, parts [
 		if r.Method == http.MethodPost {
 			var body struct {
 				Name string `json:"name"`
+				Type int    `json:"type"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			id := d.allocID()
 			item := channelJSON(id, body.Name)
+			if body.Type != 0 {
+				item["type"] = body.Type
+			}
 			d.mu.Lock()
 			d.channels[id] = item
 			d.mu.Unlock()

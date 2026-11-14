@@ -297,6 +297,41 @@ func TestDashboardJourney(t *testing.T) {
 		t.Fatalf("confessions %s", body)
 	}
 
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/tickets", map[string]any{
+		"panelChannelId": harness.GeneralChannelID, "logChannelId": harness.GeneralChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/channels", map[string]any{
+		"name": "Help", "purpose": "ticket-category",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusCreated)
+	categoryID, _ := asMap(t, body)["id"].(string)
+	if categoryID == "" || asMap(t, body)["name"] != "help" {
+		t.Fatalf("category %s", body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/tickets", map[string]any{
+		"panelChannelId": harness.GeneralChannelID,
+		"categoryId":     categoryID,
+		"supportRoleId":  harness.ModRoleID,
+		"logChannelId":   harness.AnnounceChannelID,
+		"panelTitle":     "Help",
+		"panelBody":      "Tell us what you need.",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	savedTickets := asMap(t, body)
+	if savedTickets["panelTitle"] != "Help" || savedTickets["categoryId"] != categoryID {
+		t.Fatalf("tickets %s", body)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/tickets", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if open, _ := asMap(t, body)["open"].([]any); len(open) != 0 {
+		t.Fatalf("open tickets %s", body)
+	}
+	status, _ = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/tickets/panel", nil, stack.Cookie)
+	if status != http.StatusNoContent {
+		t.Fatalf("ticket panel %d", status)
+	}
+
 	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/profile", nil, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	if asMap(t, body)["username"] != "squirrelbot" {
