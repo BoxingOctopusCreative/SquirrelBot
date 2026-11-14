@@ -16,6 +16,7 @@
 <div class="workspace">
 	<nav class="nav" aria-label="Server sections">
 		<a href={`/app/${id}`} aria-current={current(`/app/${id}`)}>Overview</a>
+		<a href={`/app/${id}/access`} aria-current={current(`/app/${id}/access`)}>Dashboard access</a>
 		<a href={`/app/${id}/profile`} aria-current={current(`/app/${id}/profile`)}>Profile</a>
 		<a href={`/app/${id}/announcements`} aria-current={current(`/app/${id}/announcements`)}>Announcements</a>
 		<a href={`/app/${id}/escalations`} aria-current={current(`/app/${id}/escalations`)}>Admin Firecall Access</a>
@@ -26,11 +27,13 @@
 		<a href={`/app/${id}/welcome`} aria-current={current(`/app/${id}/welcome`)}>Welcome</a>
 		<a href={`/app/${id}/reactions`} aria-current={current(`/app/${id}/reactions`)}>Reaction Roles</a>
 		<a href={`/app/${id}/starboard`} aria-current={current(`/app/${id}/starboard`)}>Starboard</a>
+		<a href={`/app/${id}/confessions`} aria-current={current(`/app/${id}/confessions`)}>Confessions</a>
+		<a href={`/app/${id}/tickets`} aria-current={current(`/app/${id}/tickets`)}>Support tickets</a>
 		<a href={`/app/${id}/commands`} aria-current={current(`/app/${id}/commands`)}>Commands</a>
 	</nav>
-	<div class="main">
+	<main id="main" class="main" tabindex="-1">
 		{#key id}
 			{@render children()}
 		{/key}
-	</div>
+	</main>
 </div>

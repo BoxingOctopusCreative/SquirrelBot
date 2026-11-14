@@ -33,6 +33,7 @@ const (
 	MaxCustomResponse = 1500
 	MaxCommandSource  = 8000
 	MaxCommandRoles   = 10
+	MaxManagerRoles   = 20
 	MaxWelcome        = 1500
 	MaxBadWords       = 100
 	MaxBadWordLen     = 40
@@ -50,6 +51,16 @@ func HasPermission(bits, perm int64) bool {
 
 func CanManageGuild(bits int64) bool {
 	return HasPermission(bits, PermManageGuild)
+}
+
+// SharesRole reports whether a member holds any role in the allowed list.
+func SharesRole(held, allowed []string) bool {
+	for _, id := range held {
+		if ContainsID(allowed, id) {
+			return true
+		}
+	}
+	return false
 }
 
 func ValidSnowflake(id string) bool {

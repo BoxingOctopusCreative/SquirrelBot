@@ -10,7 +10,21 @@ test.describe('signed out', () => {
 	test('landing page offers Discord sign-in', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('link', { name: 'Continue with Discord' })).toHaveAttribute('href', '/auth/discord');
+		await expect(page.getByRole('link', { name: 'Add SquirrelBot to a server' })).toHaveAttribute('href', '/auth/discord/invite');
+		await expect(page.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+		await expect(page.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+		await expect(page.getByText('Sign in to open servers where SquirrelBot is already installed.')).toBeVisible();
 		await expect(page.getByText('Moderation Without Enshittification.')).toBeVisible();
+	});
+
+	test('terms and privacy are public', async ({ page }) => {
+		await page.goto('/terms');
+		await expect(page.getByRole('heading', { name: 'Terms of Service' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
+		await page.goto('/privacy');
+		await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+		await expect(page.getByText('sb_session')).toBeVisible();
+		await expect(page.getByText('Message Content')).toBeVisible();
 	});
 
 	test('a refused sign-in shows the banner', async ({ page }) => {
@@ -34,12 +48,14 @@ test.describe('dashboard', () => {
 
 	test('lists the server and opens every section', async ({ page }) => {
 		await page.goto('/app');
+		await expect(page.getByRole('link', { name: 'Add a server' })).toHaveAttribute('href', '/auth/discord/invite');
 		await expect(page.getByRole('link', { name: 'Canopy' })).toBeVisible();
 		await expect(page.getByText('Acorn')).toBeVisible();
 		await page.getByRole('link', { name: 'Canopy' }).click();
 		await expect(page.getByRole('heading', { name: 'On duty' })).toBeVisible();
 
 		const sections: [string, string][] = [
+			['Dashboard access', 'Dashboard access'],
 			['Profile', 'Profile'],
 			['Announcements', 'Announcements'],
 			['Admin Firecall Access', 'Admin Firecall Access'],
@@ -50,6 +66,8 @@ test.describe('dashboard', () => {
 			['Welcome', 'Welcome'],
 			['Reaction Roles', 'Reaction roles'],
 			['Starboard', 'Starboard'],
+			['Confessions', 'Confessions'],
+			['Support tickets', 'Support tickets'],
 			['Commands', 'Commands']
 		];
 		const nav = page.getByRole('navigation', { name: 'Server sections' });
@@ -57,6 +75,26 @@ test.describe('dashboard', () => {
 			await nav.getByRole('link', { name: link }).click();
 			await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 		}
+	});
+
+	test('saves dashboard access roles', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Dashboard access' }).click();
+		await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption({ label: 'Mods' });
+		await page.getByRole('button', { name: 'Add role' }).click();
+		await page.getByRole('button', { name: 'Save access' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+		await expect(page.locator('.list').getByText('Mods')).toBeVisible();
+		await page.reload();
+		await expect(page.locator('.list').getByText('Mods')).toBeVisible();
+		await expect(page.getByLabel('Role name', { exact: true })).toHaveValue('Moderator');
+		await page.getByLabel('Role name', { exact: true }).fill('Night mods');
+		await page.getByRole('button', { name: 'Create role' }).click();
+		await expect(page.getByText('Created Night mods.')).toBeVisible();
+		await expect(page.locator('.list').getByText('Night mods')).toBeVisible();
+		await page.reload();
+		await expect(page.locator('.list').getByText('Night mods')).toBeVisible();
+		await expect(page.getByLabel('Role name', { exact: true })).toHaveValue('Moderator');
 	});
 
 	test('saves the server profile', async ({ page }) => {
@@ -102,6 +140,48 @@ test.describe('dashboard', () => {
 		await expect(page.getByText(/Created #mod-logs/)).toBeVisible();
 		await page.getByRole('button', { name: 'Save logging' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
+	});
+
+	test('saves confession channels', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('link', { name: 'Confessions' }).click();
+		const names = page.getByPlaceholder('Channel name');
+		await names.nth(0).fill('confession-review');
+		await page.getByRole('button', { name: 'Create channel' }).nth(0).click();
+		await expect(page.getByText(/Created #confession-review/)).toBeVisible();
+		await names.nth(1).fill('confessions');
+		await page.getByRole('button', { name: 'Create channel' }).nth(1).click();
+		await expect(page.getByText(/Created #confessions/)).toBeVisible();
+		await page.getByRole('button', { name: 'Save confessions' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByLabel('Review channel')).toHaveValue(/.+/);
+		await expect(page.getByLabel('Confessions channel')).not.toHaveValue('');
+	});
+
+	test('saves support tickets and posts the panel', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Support tickets' }).click();
+		await page.getByLabel('Panel channel name').fill('ticket-panel');
+		await page.getByRole('button', { name: 'Create channel' }).nth(0).click();
+		await expect(page.getByText(/Created #ticket-panel/)).toBeVisible();
+		await page.getByLabel('Category name').fill('tickets');
+		await page.getByRole('button', { name: 'Create category' }).click();
+		await expect(page.getByText(/Created the tickets category/)).toBeVisible();
+		await page.getByLabel('Transcript channel name').fill('ticket-logs');
+		await page.getByRole('button', { name: 'Create channel' }).nth(1).click();
+		await expect(page.getByText(/Created #ticket-logs/)).toBeVisible();
+		await page.getByLabel('Support role').selectOption({ label: 'Mods' });
+		await page.getByRole('button', { name: 'Save and post the panel' }).click();
+		await expect(page.getByText('Message posted.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByRole('heading', { name: 'Support tickets', exact: true })).toBeVisible();
+		await expect(page.getByRole('combobox', { name: /Panel channel/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Ticket category/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Transcript channel/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Support role/ })).toHaveValue(/.+/);
+		await expect(page.getByRole('heading', { name: 'Open tickets' })).toBeVisible();
+		await expect(page.getByText('No open tickets.')).toBeVisible();
 	});
 
 	test('saves the starboard', async ({ page }) => {

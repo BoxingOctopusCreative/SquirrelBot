@@ -1,9 +1,16 @@
 <script lang="ts">
+	import ErrorCopy from '#lib/ErrorCopy.svelte';
+	import ThemeToggle from '#lib/ThemeToggle.svelte';
+
 	let { error }: { error: App.Error } = $props();
 </script>
 
-<main class="empty">
-	<h1>Something went wrong</h1>
-	<p>{error.message}</p>
-	<p><a href="/app">Back to servers</a></p>
+<svelte:head><title>Something went wrong · SquirrelBot</title></svelte:head>
+
+<header class="topbar">
+	<a class="brand" href="/"><img src="/squirrelbot_brandkit_wide.svg" alt="SquirrelBot" width="240" /></a>
+	<ThemeToggle />
+</header>
+<main id="main" class="empty" tabindex="-1">
+	<ErrorCopy message={error.message} />
 </main>

@@ -2,6 +2,7 @@
 	import { refreshAll } from '$app/navigation';
 	import { sendJSON } from '#lib/api';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Bundle, CustomCommand } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle; commands: CustomCommand[] } } = $props();
@@ -40,7 +41,7 @@
 		try {
 			await sendJSON(`/api/guilds/${data.bundle.guild.id}/commands`, 'POST', { name, response, roleIds });
 			clearForm();
-			notice = 'Saved.';
+			notice = 'Saved. Command updated.';
 			await refreshAll();
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
@@ -99,7 +100,7 @@ end`}</pre>
 	<div class="actions">
 		<button type="submit">{editing ? 'Update command' : 'Save command'}</button>
 		{#if editing}<button class="quiet" type="button" onclick={clearForm}>Cancel</button>{/if}
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>
 <section class="list">
@@ -112,7 +113,7 @@ end`}</pre>
 			<pre>{scriptSource(command)}</pre>
 			<div class="actions">
 				<button class="quiet" type="button" onclick={() => edit(command)}>Edit</button>
-				<button class="quiet" type="button" onclick={() => remove(command.name)}>Delete</button>
+				<button class="danger" type="button" onclick={() => remove(command.name)}>Delete</button>
 			</div>
 		</article>
 	{:else}

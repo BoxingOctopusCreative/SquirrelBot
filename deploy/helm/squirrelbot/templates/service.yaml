@@ -12,5 +12,9 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
     - name: http
-      port: {{ .Values.service.port }}
+      {{- if .Values.service }}
+      port: {{ .Values.service.port | default 8080 }}
+      {{- else }}
+      port: 8080
+      {{- end }}
       targetPort: http

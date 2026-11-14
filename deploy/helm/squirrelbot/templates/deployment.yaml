@@ -20,6 +20,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "squirrelbot.fullname" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -30,7 +34,7 @@ spec:
       containers:
         - name: squirrelbot
           image: {{ include "squirrelbot.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ ((.Values.image | default dict).pullPolicy) | default "IfNotPresent" }}
           ports:
             - name: http
               containerPort: 8080
@@ -60,7 +64,9 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- $defaults := dict "requests" (dict "cpu" "50m" "memory" "64Mi") "limits" (dict "memory" "256Mi") }}
+            {{- $set := .Values.resources | default dict }}
+            {{- toYaml (mergeOverwrite (deepCopy $defaults) $set) | nindent 12 }}
       volumes:
         - name: tmp
           emptyDir: {}

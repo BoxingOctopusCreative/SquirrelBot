@@ -8,14 +8,41 @@ import (
 	"testing"
 )
 
-func TestDiscordAuthorizeInvitesManagedServers(t *testing.T) {
-	raw := discordAuthorizeURL("app", "http://localhost:5173/auth/discord/callback", "state")
+func TestDiscordAuthorizeSignsInWithoutInstalling(t *testing.T) {
+	raw := discordAuthorizeURL("app", "http://localhost:5173/auth/discord/callback", "state", false)
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	query := parsed.Query()
-	if query.Get("scope") != oauthScopes {
+	if query.Get("scope") != loginScopes {
+		t.Fatalf("scope %q", query.Get("scope"))
+	}
+	if !strings.Contains(raw, "scope=identify%20guilds") {
+		t.Fatalf("scope encoding %s", raw)
+	}
+	if strings.Contains(query.Get("scope"), "bot") || strings.Contains(query.Get("scope"), "applications.commands") {
+		t.Fatalf("login asked to install the bot: %s", raw)
+	}
+	if query.Get("permissions") != "" || query.Get("integration_type") != "" {
+		t.Fatalf("login carried invite fields %s", raw)
+	}
+	if query.Get("prompt") != "consent" {
+		t.Fatalf("prompt %q", query.Get("prompt"))
+	}
+	if query.Get("response_type") != "code" {
+		t.Fatalf("response_type %q", query.Get("response_type"))
+	}
+}
+
+func TestDiscordAuthorizeInvitesManagedServers(t *testing.T) {
+	raw := discordAuthorizeURL("app", "http://localhost:5173/auth/discord/callback", "state", true)
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := parsed.Query()
+	if query.Get("scope") != inviteScopes {
 		t.Fatalf("scope %q", query.Get("scope"))
 	}
 	if !strings.Contains(raw, "scope=identify%20guilds%20bot%20applications.commands") {
@@ -32,8 +59,10 @@ func TestDiscordAuthorizeInvitesManagedServers(t *testing.T) {
 		t.Fatal(err)
 	}
 	const changeNickname int64 = 1 << 26
-	if bits&changeNickname == 0 {
-		t.Fatal("invite is missing Change Nickname")
+	const attachFiles int64 = 1 << 15
+	const mentionRoles int64 = 1 << 17
+	if bits&changeNickname == 0 || bits&attachFiles == 0 || bits&mentionRoles == 0 {
+		t.Fatal("invite is missing Change Nickname, Attach Files, or Mention Everyone")
 	}
 	if query.Get("integration_type") != "0" {
 		t.Fatalf("integration_type %q", query.Get("integration_type"))
