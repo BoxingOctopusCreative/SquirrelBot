@@ -68,6 +68,32 @@ func (s *Store) GetGuild(ctx context.Context, id string) (Guild, error) {
 	return g, err
 }
 
+func (s *Store) ManagerRoleIDs(ctx context.Context, guildID string) ([]string, error) {
+	var raw []byte
+	err := s.pool.QueryRow(ctx, `SELECT manager_role_ids FROM guilds WHERE id = $1`, guildID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return decodeIDs(raw), nil
+}
+
+func (s *Store) SetManagerRoleIDs(ctx context.Context, guildID string, ids []string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE guilds SET manager_role_ids = $2, updated_at = now() WHERE id = $1`,
+		guildID, encodeIDs(ids),
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) UpdateGuildSettings(ctx context.Context, g Guild) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE guilds SET
@@ -97,6 +123,7 @@ type Counts struct {
 	ActiveEscalations      int `json:"activeEscalations"`
 	PendingGate            int `json:"pendingGate"`
 	Cases                  int `json:"cases"`
+	OpenTickets            int `json:"openTickets"`
 }
 
 func (s *Store) Counts(ctx context.Context, guildID string) (Counts, error) {
@@ -106,8 +133,9 @@ func (s *Store) Counts(ctx context.Context, guildID string) (Counts, error) {
 			(SELECT count(*) FROM announcements WHERE guild_id = $1 AND status = 'scheduled'),
 			(SELECT count(*) FROM escalations WHERE guild_id = $1 AND status = 'active'),
 			(SELECT count(*) FROM gate_members WHERE guild_id = $1 AND status = 'pending'),
-			(SELECT count(*) FROM mod_cases WHERE guild_id = $1)`, guildID).Scan(
-		&c.ScheduledAnnouncements, &c.ActiveEscalations, &c.PendingGate, &c.Cases,
+			(SELECT count(*) FROM mod_cases WHERE guild_id = $1),
+			(SELECT count(*) FROM tickets WHERE guild_id = $1 AND status = 'open')`, guildID).Scan(
+		&c.ScheduledAnnouncements, &c.ActiveEscalations, &c.PendingGate, &c.Cases, &c.OpenTickets,
 	)
 	return c, err
 }

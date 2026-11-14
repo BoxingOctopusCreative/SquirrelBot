@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type Server struct {
 	log    *slog.Logger
 	client *http.Client
 	access *accessCache
+	roles  *memberRoleCache
 	meta   *metaCache
 	csp    string
 }
@@ -48,10 +50,11 @@ func New(cfg config.Config, st *store.Store, bot *discord.Bot, log *slog.Logger)
 			Timeout: 15 * time.Second,
 		},
 		access: newAccessCache(),
+		roles:  newMemberRoleCache(),
 		meta:   newMetaCache(),
 	}
 	s.app = fiber.New(fiber.Config{
-		BodyLimit:             1 << 20,
+		BodyLimit:             2 << 20,
 		DisableStartupMessage: true,
 		ServerHeader:          "squirrelbot",
 		ErrorHandler:          s.handleError,
@@ -62,6 +65,16 @@ func New(cfg config.Config, st *store.Store, bot *discord.Bot, log *slog.Logger)
 }
 
 func (s *Server) Listen() error { return s.app.Listen(s.cfg.HTTPAddr) }
+
+// Serve accepts connections on ln until Shutdown.
+func (s *Server) Serve(ln net.Listener) error { return s.app.Listener(ln) }
+
+// SetHTTPClient replaces the client used for Discord OAuth and the signed-in user's servers.
+func (s *Server) SetHTTPClient(client *http.Client) {
+	if client != nil {
+		s.client = client
+	}
+}
 
 func (s *Server) Shutdown() error {
 	return s.app.ShutdownWithTimeout(10 * time.Second)
@@ -93,6 +106,7 @@ func (s *Server) routes() {
 	})
 	s.app.Get("/readyz", s.ready)
 	s.app.Get("/auth/discord", s.startLogin)
+	s.app.Get("/auth/discord/invite", s.startInvite)
 	s.app.Get("/auth/discord/callback", s.finishLogin)
 	s.app.Post("/auth/logout", s.requireSameOrigin, s.logout)
 
@@ -101,6 +115,8 @@ func (s *Server) routes() {
 	api.Get("/guilds", s.guilds)
 	guild := api.Group("/guilds/:guildID", s.requireGuild)
 	guild.Get("/", s.bundle)
+	guild.Get("/profile", s.guildProfile)
+	guild.Put("/profile", s.putGuildProfile)
 	guild.Patch("/", s.patchSettings)
 	guild.Get("/cases", s.cases)
 	guild.Get("/announcements", s.announcements)
@@ -113,6 +129,7 @@ func (s *Server) routes() {
 	guild.Delete("/announcement-templates/:templateID", s.deleteAnnouncementTemplate)
 	guild.Post("/announcement-templates/:templateID/render", s.renderAnnouncementTemplate)
 	guild.Put("/escalation-roles", s.putEscalationRoles)
+	guild.Put("/manager-roles", s.putManagerRoles)
 	guild.Get("/escalations", s.escalations)
 	guild.Post("/escalations", s.createEscalation)
 	guild.Post("/escalations/:escalationID/revoke", s.revokeEscalation)
@@ -122,6 +139,10 @@ func (s *Server) routes() {
 	guild.Put("/automod", s.putAutomod)
 	guild.Put("/logging", s.putLogging)
 	guild.Put("/starboard", s.putStarboard)
+	guild.Put("/confessions", s.putConfessions)
+	guild.Get("/tickets", s.listTickets)
+	guild.Put("/tickets", s.putTickets)
+	guild.Post("/tickets/panel", s.postTicketPanel)
 	guild.Post("/channels", s.createSetupChannel)
 	guild.Post("/roles", s.createRole)
 	guild.Get("/reaction-roles", s.reactionRoles)
@@ -169,7 +190,7 @@ func fail(c *fiber.Ctx, status int, message string) error {
 }
 
 func contentSecurityPolicy(webDir string) string {
-	policy := "default-src 'self'; img-src 'self' https://cdn.discordapp.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	policy := "default-src 'self'; img-src 'self' https://cdn.discordapp.com data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	body, err := os.ReadFile(filepath.Join(webDir, "200.html"))
 	if err != nil {
 		return policy

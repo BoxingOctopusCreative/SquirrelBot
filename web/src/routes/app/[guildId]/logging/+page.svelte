@@ -4,6 +4,7 @@
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import type { Bundle, LogConfig } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle } } = $props();
@@ -16,7 +17,7 @@
 		notice = '';
 		try {
 			await sendJSON(`/api/guilds/${data.bundle.guild.id}/logging`, 'PUT', logging);
-			notice = 'Saved.';
+			notice = 'Saved. Logging updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -46,6 +47,6 @@
 				logging.channelId = channel.id;
 			}}
 		/>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

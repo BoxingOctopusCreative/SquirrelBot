@@ -3,6 +3,7 @@
 	import { sendJSON } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Guild } from '#lib/types';
 
@@ -24,7 +25,7 @@
 				autoroleId: guild.autoroleId,
 				prefix: guild.prefix
 			});
-			notice = 'Saved.';
+			notice = 'Saved. Welcome message updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -36,7 +37,7 @@
 <svelte:head><title>Welcome · SquirrelBot</title></svelte:head>
 <p class="kicker">Arrival</p>
 <h1>Welcome</h1>
-<p class="sub">The mod and admin roles can use staff commands even when their Discord permissions are narrower. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</p>
+<p class="sub">The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</p>
 <form class="panel" onsubmit={(event) => { event.preventDefault(); save(); }}>
 	<div class="split">
 		<Field label="Mod role"><RoleSelect roles={data.bundle.roles} bind:value={guild.modRoleId} /></Field>
@@ -51,6 +52,6 @@
 	<Field label="Custom command prefix"><input bind:value={guild.prefix} maxlength="5" required /></Field>
 	<div class="actions">
 		<button type="submit" disabled={busy}>Save welcome</button>
-		{#if notice}<span class="banner">{notice}</span>{/if}
+		<Notice text={notice} />
 	</div>
 </form>

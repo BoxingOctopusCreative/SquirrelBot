@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/BoxingOctopus/squirrelbot/internal/domain"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -79,6 +80,16 @@ func commandDefs() []*discordgo.ApplicationCommand {
 			role("role", "Admin firecall role to remove", true),
 			text("reason", "Why you are ending it early", false)),
 		cmd("escalations", "List active admin firecall access"),
+		cmd("confession", "Send an anonymous confession for moderators to review",
+			&discordgo.ApplicationCommandOption{
+				Type: discordgo.ApplicationCommandOptionString, Name: "text",
+				Description: "Confession text. Your name stays off the public post",
+				Required:    true, MaxLength: domain.MaxConfession,
+			}),
+		cmd("confession-review", "Set the channel where moderators review confessions",
+			channel("channel", "Private channel for the mod team", true)),
+		cmd("confession-channel", "Set the channel where approved confessions are posted",
+			channel("channel", "Channel members can read", true)),
 		cmd("gate", "Check the application deadline or post the application message",
 			&discordgo.ApplicationCommandOption{
 				Type: discordgo.ApplicationCommandOptionString, Name: "action", Description: "What to do", Required: true,

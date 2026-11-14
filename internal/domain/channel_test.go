@@ -40,7 +40,31 @@ func TestSetupPurpose(t *testing.T) {
 	if !ok || private {
 		t.Fatal("starboard should be public")
 	}
+	_, private, ok = SetupPurpose("confession-review")
+	if !ok || !private {
+		t.Fatal("confession review should be private")
+	}
+	_, private, ok = SetupPurpose("confessions")
+	if !ok || private {
+		t.Fatal("confessions should be public")
+	}
+	_, private, ok = SetupPurpose("ticket-panel")
+	if !ok || private {
+		t.Fatal("ticket panel should be public")
+	}
+	_, private, ok = SetupPurpose("ticket-log")
+	if !ok || !private {
+		t.Fatal("ticket transcripts should be private")
+	}
 	if _, _, ok := SetupPurpose("general"); ok {
 		t.Fatal("unknown purpose")
+	}
+	kind, _, _, ok := ClassifySetup("ticket-category")
+	if !ok || kind != "category" {
+		t.Fatal("ticket category")
+	}
+	kind, _, private, ok = ClassifySetup("ticket-log")
+	if !ok || kind != "text" || !private {
+		t.Fatal("ticket log kind")
 	}
 }

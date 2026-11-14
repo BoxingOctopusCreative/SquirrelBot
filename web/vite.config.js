@@ -2,6 +2,8 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+const api = process.env.SQUIRRELBOT_API || 'http://localhost:8080';
+
 export default defineConfig({
 	plugins: [
 		sveltekit({
@@ -12,10 +14,10 @@ export default defineConfig({
 	],
 	server: {
 		proxy: {
-			'/api': 'http://localhost:8080',
-			'/auth': 'http://localhost:8080',
-			'/healthz': 'http://localhost:8080',
-			'/readyz': 'http://localhost:8080'
+			'/api': api,
+			'/auth': api,
+			'/healthz': api,
+			'/readyz': api
 		}
 	}
 });

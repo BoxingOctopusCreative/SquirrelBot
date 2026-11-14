@@ -1,0 +1,12 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: squirrelbot
+  namespace: flux-system
+spec:
+  type: oci
+  interval: 30m
+  url: oci://ghcr.io/boxingoctopuscreative/charts
+  # A private chart needs a docker-registry Secret in flux-system.
+  # secretRef:
+  #   name: ghcr

@@ -1,16 +1,7 @@
-nameOverride: ""
-fullnameOverride: ""
-
-image:
-  repository: squirrelbot
-  tag: ""
-  pullPolicy: IfNotPresent
+imagePullSecrets: []
 
 # The Discord gateway allows one session per bot token. The Deployment
 # hardcodes replicas to 1 and uses Recreate. Do not scale this chart.
-
-service:
-  port: 8080
 
 publicUrl: ""
 
@@ -23,23 +14,30 @@ secrets:
   discordClientSecret: ""
   sessionSecret: ""
 
+# enabled creates the Ingress. Set it to false to skip the Ingress.
+# className is the IngressClass. The default is traefik.
+# The host comes from publicUrl.
+# annotations are copied onto the Ingress.
+# tls asks Traefik to serve HTTPS. certResolver is the ACME resolver
+# in Traefik's static config. Traefik stores the certificate in
+# tlsSecretName. Clear certResolver to use a certificate that
+# already exists in that Secret.
 ingress:
-  enabled: false
-  className: ""
-  host: ""
+  enabled: true
+  className: traefik
   annotations: {}
-  tls: false
-  tlsSecretName: ""
+  tls: true
+  certResolver: letsencrypt
+  tlsSecretName: squirrelbot-tls
 
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    memory: 256Mi
-
+# bundled starts a Postgres StatefulSet for this release.
+# Leave it false and set secrets.databaseUrl for an external database.
+# sslMode is the libpq mode: disable, allow, prefer, require,
+# verify-ca, or verify-full. The bundled server does not terminate
+# TLS, so that database uses disable. An external database uses
+# require. An sslmode already in secrets.databaseUrl is kept.
 postgres:
-  enabled: false
+  bundled: false
   image: postgres:16-alpine
   auth:
     database: squirrelbot
@@ -48,9 +46,3 @@ postgres:
   persistence:
     size: 8Gi
     storageClass: ""
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      memory: 512Mi

@@ -6,7 +6,15 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "squirrelbot.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-  {{- with .Values.ingress.annotations }}
+  {{- $annotations := dict }}
+  {{- if .Values.ingress.tls }}
+  {{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.tls" "true" }}
+  {{- end }}
+  {{- if and .Values.ingress.tls .Values.ingress.certResolver }}
+  {{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.tls.certresolver" .Values.ingress.certResolver }}
+  {{- end }}
+  {{- $annotations = merge $annotations (.Values.ingress.annotations | default dict) }}
+  {{- with $annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -17,11 +25,13 @@ spec:
   {{- if .Values.ingress.tls }}
   tls:
     - hosts:
-        - {{ required "ingress.host is required" .Values.ingress.host }}
-      secretName: {{ required "ingress.tlsSecretName is required" .Values.ingress.tlsSecretName }}
+        - {{ include "squirrelbot.host" . }}
+      {{- with .Values.ingress.tlsSecretName }}
+      secretName: {{ . }}
+      {{- end }}
   {{- end }}
   rules:
-    - host: {{ required "ingress.host is required" .Values.ingress.host }}
+    - host: {{ include "squirrelbot.host" . }}
       http:
         paths:
           - path: /
