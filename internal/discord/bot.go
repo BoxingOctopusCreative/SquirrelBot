@@ -110,6 +110,16 @@ func (b *Bot) SetReady(ready bool) { b.ready.Store(ready) }
 
 func (b *Bot) Session() *discordgo.Session { return b.session }
 
+// HandleInteraction runs one slash command, button, or modal through the bot session.
+func (b *Bot) HandleInteraction(i *discordgo.InteractionCreate) {
+	b.onInteraction(b.session, i)
+}
+
+// HandleMessage runs custom commands and automod for one message.
+func (b *Bot) HandleMessage(m *discordgo.MessageCreate) {
+	b.onMessage(b.session, m)
+}
+
 func (b *Bot) registerCommands(s *discordgo.Session, appID string) error {
 	body, err := commandPayload()
 	if err != nil {
