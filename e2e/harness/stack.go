@@ -17,6 +17,7 @@ import (
 	"github.com/BoxingOctopus/squirrelbot/internal/config"
 	"github.com/BoxingOctopus/squirrelbot/internal/db"
 	"github.com/BoxingOctopus/squirrelbot/internal/discord"
+	"github.com/BoxingOctopus/squirrelbot/internal/discordmock"
 	"github.com/BoxingOctopus/squirrelbot/internal/secretbox"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
 	"github.com/bwmarrin/discordgo"
@@ -37,6 +38,8 @@ type Stack struct {
 	Origin      string
 	Cookie      string
 	GuestCookie string
+	Bot         *discord.Bot
+	Discord     *discordmock.Server
 	close       func()
 }
 
@@ -91,7 +94,7 @@ func Start(ctx context.Context, opt Options) (*Stack, error) {
 	if err != nil {
 		return fail(err)
 	}
-	transport := rewriteTransport{dest: dest}
+	transport := discordmock.NewTransport(nil, dest)
 	client := &http.Client{Timeout: 15 * time.Second, Transport: transport}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -139,6 +142,8 @@ func Start(ctx context.Context, opt Options) (*Stack, error) {
 	stack.Origin = config.Config{PublicURL: publicURL}.Origin()
 	stack.Cookie = SessionID
 	stack.GuestCookie = GuestSessionID
+	stack.Bot = bot
+	stack.Discord = fake
 	var poolRef *pgxpool.Pool = pool
 	stack.close = func() {
 		_ = server.Shutdown()
