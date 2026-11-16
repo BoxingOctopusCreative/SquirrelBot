@@ -14,7 +14,12 @@
 	} = $props();
 </script>
 
-<select bind:value>
+<select
+	value={value}
+	onchange={(event) => {
+		value = event.currentTarget.value;
+	}}
+>
 	{#if allowEmpty}<option value="">{emptyLabel}</option>{/if}
 	{#each roles as role (role.id)}
 		<option value={role.id} disabled={role.managed}>{role.name}</option>
