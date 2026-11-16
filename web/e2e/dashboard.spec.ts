@@ -162,21 +162,22 @@ test.describe('dashboard', () => {
 	test('saves support tickets and posts the panel', async ({ page }) => {
 		await openGuild(page);
 		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Support tickets' }).click();
-		await page.getByLabel('Panel channel name').fill('ticket-panel');
-		await page.getByRole('button', { name: 'Create channel' }).nth(0).click();
-		await expect(page.getByText(/Created #ticket-panel/)).toBeVisible();
+		const panel = page.getByRole('combobox', { name: /Panel channel/ });
+		await panel.selectOption({ label: '#general' });
+		await expect(panel.locator('option:checked')).toHaveText('#general');
 		await page.getByLabel('Category name').fill('tickets');
 		await page.getByRole('button', { name: 'Create category' }).click();
 		await expect(page.getByText(/Created the tickets category/)).toBeVisible();
 		await page.getByLabel('Transcript channel name').fill('ticket-logs');
 		await page.getByRole('button', { name: 'Create channel' }).nth(1).click();
 		await expect(page.getByText(/Created #ticket-logs/)).toBeVisible();
+		await expect(panel.locator('option:checked')).toHaveText('#general');
 		await page.getByLabel('Support role').selectOption({ label: 'Mods' });
 		await page.getByRole('button', { name: 'Save and post the panel' }).click();
 		await expect(page.getByText('Message posted.')).toBeVisible();
 		await page.reload();
 		await expect(page.getByRole('heading', { name: 'Support tickets', exact: true })).toBeVisible();
-		await expect(page.getByRole('combobox', { name: /Panel channel/ })).not.toHaveValue('');
+		await expect(page.getByRole('combobox', { name: /Panel channel/ }).locator('option:checked')).toHaveText('#general');
 		await expect(page.getByRole('combobox', { name: /Ticket category/ })).not.toHaveValue('');
 		await expect(page.getByRole('combobox', { name: /Transcript channel/ })).not.toHaveValue('');
 		await expect(page.getByRole('combobox', { name: /Support role/ })).toHaveValue(/.+/);

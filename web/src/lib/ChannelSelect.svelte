@@ -16,7 +16,12 @@
 	} = $props();
 </script>
 
-<select bind:value>
+<select
+	value={value}
+	onchange={(event) => {
+		value = event.currentTarget.value;
+	}}
+>
 	{#if allowEmpty}<option value="">{emptyLabel}</option>{/if}
 	{#each channels as channel (channel.id)}
 		<option value={channel.id}>{prefix}{channel.name}</option>
