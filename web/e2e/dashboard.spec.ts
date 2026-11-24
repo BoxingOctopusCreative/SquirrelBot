@@ -223,7 +223,7 @@ test.describe('dashboard', () => {
 		await template.getByRole('button', { name: 'Save template' }).click();
 		await expect(page.getByText('Template saved.')).toBeVisible();
 		await page.getByLabel('Values for the next use').fill('when=Tonight');
-		await page.getByRole('button', { name: 'Use' }).click();
+		await page.getByRole('button', { name: 'Use', exact: true }).click();
 		await expect(page.getByText('Filled from the template. Send it when it looks right.')).toBeVisible();
 		await expect(publish.getByLabel('Title')).toHaveValue('Canopy downtime');
 		await expect(publish.getByLabel('Body')).toHaveValue('Canopy pauses at Tonight. Posted by Acorn.');
