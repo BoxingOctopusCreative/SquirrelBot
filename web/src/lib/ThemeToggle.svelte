@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from 'flowbite-svelte';
 	import { onMount } from 'svelte';
 
 	const storageKey = 'squirrelbot-theme';
@@ -10,14 +11,15 @@
 		return stored === 'dark' || stored === 'light' ? stored : null;
 	}
 
-	function systemDark(): boolean {
-		return window.matchMedia('(prefers-color-scheme: dark)').matches;
+	function prefersLight(): boolean {
+		return window.matchMedia('(prefers-color-scheme: light)').matches;
 	}
 
 	function paint(mode: 'dark' | 'light' | null) {
 		if (mode === null) delete document.documentElement.dataset.theme;
 		else document.documentElement.dataset.theme = mode;
-		dark = mode === null ? systemDark() : mode === 'dark';
+		dark = mode === 'dark' || (mode === null && !prefersLight());
+		document.documentElement.classList.toggle('dark', dark);
 	}
 
 	function toggle() {
@@ -28,7 +30,7 @@
 
 	onMount(() => {
 		paint(storedTheme());
-		const media = window.matchMedia('(prefers-color-scheme: dark)');
+		const media = window.matchMedia('(prefers-color-scheme: light)');
 		const onChange = () => {
 			if (storedTheme() === null) paint(null);
 		};
@@ -37,6 +39,4 @@
 	});
 </script>
 
-<button class="quiet theme-toggle" type="button" aria-pressed={dark ? 'true' : 'false'} onclick={toggle}>
-	Dark mode
-</button>
+<Button color="alternative" type="button" aria-pressed={dark} onclick={toggle}>Dark mode</Button>

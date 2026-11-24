@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { Button, Card, Fileupload, Input, P } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendForm } from '#lib/api';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import type { BotProfile, Bundle } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle; profile: BotProfile } } = $props();
@@ -70,37 +72,39 @@
 </script>
 
 <svelte:head><title>Profile · SquirrelBot</title></svelte:head>
-<p class="kicker">This server</p>
-<h1>Profile</h1>
-<p class="sub">
-	Members of this server see this name and picture. The username stays {username} on every server. The bot needs
-	Change Nickname to set the name. Use Add a server if an older invite is missing that permission.
-</p>
-<form class="panel" onsubmit={save}>
-	<div class="profile-head">
-		{#if shown}
-			<img class="profile-face" src={shown} alt="Avatar for this server" />
-		{:else}
-			<div class="profile-face" role="img" aria-label="No avatar yet"></div>
-		{/if}
-		<div>
-			<p>{nick.trim() || username}</p>
-			<p class="hint">Shown in the member list, chat, and voice.</p>
+<PageIntro kicker="This server" title="Profile">
+	<P>
+		Members of this server see this name and picture. The username stays {username} on every server. The bot needs
+		Change Nickname to set the name. Use Add a server if an older invite is missing that permission.
+	</P>
+</PageIntro>
+<Card size="xl" class="flex-col p-5">
+	<form class="grid gap-4" onsubmit={save}>
+		<div class="flex items-center gap-4">
+			{#if shown}
+				<img class="h-16 w-16 rounded-full object-cover" src={shown} alt="Avatar for this server" />
+			{:else}
+				<div class="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-600" role="img" aria-label="No avatar yet"></div>
+			{/if}
+			<div>
+				<P>{nick.trim() || username}</P>
+				<P class="text-sm">Shown in the member list, chat, and voice.</P>
+			</div>
 		</div>
-	</div>
-	<Field label="Display name" hint="Leave this blank to use the username.">
-		<input name="nick" bind:value={nick} maxlength="32" autocomplete="off" />
-	</Field>
-	<Field label="Avatar" hint="PNG, JPEG, or GIF. Up to 1 MB.">
-		<input name="avatar" type="file" accept="image/png,image/jpeg,image/gif" onchange={pick} />
-	</Field>
-	<input type="hidden" name="clearAvatar" value={clearAvatar ? '1' : '0'} />
-	<div class="actions">
-		<button type="submit" disabled={busy}>Save profile</button>
-		{#if (profile.customAvatar || preview) && !clearAvatar}
-			<button class="quiet" type="button" disabled={busy} onclick={useUsualPicture}>Use the usual picture</button>
-		{/if}
-		{#if clearAvatar}<span class="hint">Save profile to use the usual picture.</span>{/if}
-		<Notice text={notice} />
-	</div>
-</form>
+		<Field label="Display name" hint="Leave this blank to use the username.">
+			<Input name="nick" bind:value={nick} maxlength={32} autocomplete="off" />
+		</Field>
+		<Field label="Avatar" hint="PNG, JPEG, or GIF. Up to 1 MB.">
+			<Fileupload name="avatar" accept="image/png,image/jpeg,image/gif" onchange={pick} />
+		</Field>
+		<input type="hidden" name="clearAvatar" value={clearAvatar ? '1' : '0'} />
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Save profile</Button>
+			{#if (profile.customAvatar || preview) && !clearAvatar}
+				<Button color="alternative" type="button" disabled={busy} onclick={useUsualPicture}>Use the usual picture</Button>
+			{/if}
+			{#if clearAvatar}<span class="text-sm text-gray-500">Save profile to use the usual picture.</span>{/if}
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>

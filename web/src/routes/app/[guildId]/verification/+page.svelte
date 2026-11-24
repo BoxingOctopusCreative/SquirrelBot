@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { Button, Card, Checkbox, Heading, Helper, Input, Label, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import NumberInput from '#lib/NumberInput.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import type { Bundle, GateMember } from '#lib/types';
 
 	let { data }: { data: { bundle: Bundle; pending: GateMember[]; recent: GateMember[] } } = $props();
@@ -68,76 +71,85 @@
 </script>
 
 <svelte:head><title>Server application · SquirrelBot</title></svelte:head>
-<p class="kicker">Application</p>
-<h1>Server application</h1>
-<p class="sub">New members get a deadline to answer the questions. The first question is always "What is your age?". An answer under 18 removes them immediately. Finishing the form clears the deadline.</p>
+<PageIntro kicker="Application" title="Server application">
+	<P>New members get a deadline to answer the questions. The first question is always "What is your age?". An answer under 18 removes them immediately. Finishing the form clears the deadline.</P>
+</PageIntro>
 
-<form class="panel" onsubmit={(event) => { event.preventDefault(); save(); }}>
-	<label class="check"><input type="checkbox" bind:checked={gate.enabled} /> Kick people who miss the deadline</label>
-	<fieldset class="field">
-		<legend>Questions</legend>
-		<small>Age is always first and cannot be changed. Add up to 4 more. Each one can be 45 characters, which is Discord's limit for a form label.</small>
-		<div class="question-row">
-			<label for="age-question">Age question</label>
-			<input id="age-question" value="What is your age?" disabled />
-		</div>
-		{#each questions as _, index (index)}
-			<div class="question-row">
-				<label for="question-{index}">Question {index + 2}</label>
-				<input id="question-{index}" bind:value={questions[index]} maxlength="45" placeholder="Question" required />
-				<button class="quiet" type="button" onclick={() => removeQuestion(index)}>Remove</button>
+<Card size="xl" class="mb-6 flex-col p-5">
+	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<Checkbox bind:checked={gate.enabled}>Kick people who miss the deadline</Checkbox>
+		<fieldset class="grid gap-3">
+			<legend class="text-sm font-medium">Questions</legend>
+			<Helper>Age is always first and cannot be changed. Add up to 4 more. Each one can be 45 characters, which is Discord's limit for a form label.</Helper>
+			<div class="flex flex-wrap items-center gap-2">
+				<Label for="age-question" class="w-32">Age question</Label>
+				<Input id="age-question" class="min-w-48 flex-1" value="What is your age?" disabled />
 			</div>
-		{/each}
-		{#if questions.length < 4}
-			<button class="quiet" type="button" onclick={addQuestion}>Add question</button>
-		{/if}
-	</fieldset>
-	<div class="split">
-		<Field label="Hours to comply"><input type="number" min="1" max="720" bind:value={deadlineHours} /></Field>
-		<Field label="Warn this many hours before" hint="0 skips the warning."><input type="number" min="0" max="719" bind:value={warnHours} /></Field>
-	</div>
-	<Field label="Kick reason"><input bind:value={gate.kickReason} maxlength="400" required /></Field>
-	<Field label="Direct message on join" hint="Placeholders: {'{server} {duration}'}">
-		<textarea bind:value={gate.dmMessage}></textarea>
-	</Field>
-	<Field label="Log channel"><ChannelSelect channels={data.bundle.channels} bind:value={gate.logChannelId} /></Field>
-	<fieldset class="field">
-		<legend>Exempt roles</legend>
-		{#each data.bundle.roles as role (role.id)}
-			<label class="check"><input type="checkbox" checked={gate.exemptRoleIds.includes(role.id)} onchange={() => toggleExempt(role.id)} /> {role.name}</label>
-		{/each}
-	</fieldset>
-	<div class="actions">
-		<button type="submit" disabled={busy}>Save application</button>
-		<Notice text={notice} />
-	</div>
-</form>
+			{#each questions as _, index (index)}
+				<div class="flex flex-wrap items-center gap-2">
+					<Label for="question-{index}" class="w-32">Question {index + 2}</Label>
+					<Input id="question-{index}" class="min-w-48 flex-1" bind:value={questions[index]} maxlength={45} placeholder="Question" required />
+					<Button color="alternative" type="button" onclick={() => removeQuestion(index)}>Remove</Button>
+				</div>
+			{/each}
+			{#if questions.length < 4}
+				<Button color="alternative" type="button" onclick={addQuestion}>Add question</Button>
+			{/if}
+		</fieldset>
+		<div class="grid gap-4 md:grid-cols-2">
+			<Field label="Hours to comply"><NumberInput min={1} max={720} bind:value={deadlineHours} /></Field>
+			<Field label="Warn this many hours before" hint="0 skips the warning."><NumberInput min={0} max={719} bind:value={warnHours} /></Field>
+		</div>
+		<Field label="Kick reason"><Input bind:value={gate.kickReason} maxlength={400} required /></Field>
+		<Field label="Direct message on join" hint="Placeholders: {'{server} {duration}'}">
+			<Textarea bind:value={gate.dmMessage} rows={6} />
+		</Field>
+		<Field label="Log channel"><ChannelSelect channels={data.bundle.channels} bind:value={gate.logChannelId} /></Field>
+		<fieldset class="grid gap-2">
+			<legend class="text-sm font-medium">Exempt roles</legend>
+			{#each data.bundle.roles as role (role.id)}
+				<Checkbox checked={gate.exemptRoleIds.includes(role.id)} onchange={() => toggleExempt(role.id)}>{role.name}</Checkbox>
+			{/each}
+		</fieldset>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Save application</Button>
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
 
-<section class="panel">
-	<h2>Application message</h2>
-	<p class="hint">Save first. Members press Answer questions and fill out the form. Posting in the same channel updates the current message.</p>
+<Card size="xl" class="mb-6 flex-col gap-4 p-5">
+	<Heading tag="h2" class="font-display text-xl font-semibold">Application message</Heading>
+	<P class="text-sm">Save first. Members press Answer questions and fill out the form. Posting in the same channel updates the current message.</P>
 	<Field label="Channel"><ChannelSelect channels={data.bundle.channels} bind:value={panelChannel} allowEmpty={false} /></Field>
-	<button type="button" onclick={postPanel}>Post message</button>
-</section>
+	<Button type="button" onclick={postPanel}>Post message</Button>
+</Card>
 
-<section>
-	<h2>Waiting</h2>
-	<div class="list">
-		{#each data.pending as member (member.userId)}
-			<article class="item">
-				<header><strong>{member.userName || member.userId}</strong><span class="meta">{member.status}</span></header>
-				<p class="meta">Joined {when(member.joinedAt)} · deadline {when(member.deadlineAt)}</p>
-			</article>
-		{:else}
-			<p class="hint">Nobody is waiting.</p>
-		{/each}
+<section class="grid gap-6">
+	<div>
+		<Heading tag="h2" class="mb-3 font-display text-xl font-semibold">Waiting</Heading>
+		<div class="list grid gap-3">
+			{#each data.pending as member (member.userId)}
+				<Card size="xl" class="flex-col gap-1 p-4">
+					<header class="flex items-baseline justify-between gap-3">
+						<strong>{member.userName || member.userId}</strong>
+						<span class="font-mono text-sm text-gray-500">{member.status}</span>
+					</header>
+					<P class="font-mono text-sm">Joined {when(member.joinedAt)} · deadline {when(member.deadlineAt)}</P>
+				</Card>
+			{:else}
+				<P class="text-sm">Nobody is waiting.</P>
+			{/each}
+		</div>
 	</div>
-	<h2>Removed this week</h2>
-	<div class="list">
-		{#each data.recent as member (member.userId)}
-			<p class="item">{member.userName || member.userId} · {when(member.deadlineAt)}</p>
-		{:else}
-			<p class="hint">No recent kicks.</p>
-		{/each}
+	<div>
+		<Heading tag="h2" class="mb-3 font-display text-xl font-semibold">Removed this week</Heading>
+		<div class="list grid gap-3">
+			{#each data.recent as member (member.userId)}
+				<Card size="xl" class="p-4">{member.userName || member.userId} · {when(member.deadlineAt)}</Card>
+			{:else}
+				<P class="text-sm">No recent kicks.</P>
+			{/each}
+		</div>
 	</div>
 </section>

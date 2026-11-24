@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { A, Button, Card, Heading, Hr, Input, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
@@ -6,6 +7,7 @@
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Announcement, AnnouncementTemplate, Bundle } from '#lib/types';
 
@@ -153,117 +155,120 @@
 </script>
 
 <svelte:head><title>Announcements · SquirrelBot</title></svelte:head>
-<p class="kicker">Mod team</p>
-<h1>Announcements</h1>
-<p class="sub">Posts go out as an embed from SquirrelBot, with your name in the footer.</p>
+<PageIntro kicker="Mod team" title="Announcements">
+	<P>Posts go out as an embed from SquirrelBot, with your name in the footer.</P>
+</PageIntro>
 
-<form class="panel" onsubmit={(event) => { event.preventDefault(); publish(); }}>
-	<Field label="Channel"><ChannelSelect channels={data.bundle.channels} bind:value={channelId} allowEmpty={false} /></Field>
-	<Field label="Title"><input bind:value={title} maxlength="256" required /></Field>
-	<Field label="Body"><textarea bind:value={body} maxlength="4000" required></textarea></Field>
-	<div class="split">
-		<Field label="Ping a role" hint="Leave empty to post quietly.">
-			<RoleSelect roles={data.bundle.roles} bind:value={pingRoleId} />
-		</Field>
-		<Field label="Send later" hint="Leave empty to send now.">
-			<input type="datetime-local" bind:value={schedule} />
-		</Field>
-	</div>
-	<div class="actions">
-		<button type="submit" disabled={busy}>{schedule ? 'Schedule' : 'Send now'}</button>
-		<CreateChannel
-			guildId={data.bundle.guild.id}
-			purpose="announcements"
-			oncreated={(channel) => {
-				channelId = channel.id;
-			}}
-		/>
-		<Notice text={notice} />
-	</div>
-</form>
+<Card size="xl" class="mb-6 flex-col p-5">
+	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); publish(); }}>
+		<Field label="Channel"><ChannelSelect channels={data.bundle.channels} bind:value={channelId} allowEmpty={false} /></Field>
+		<Field label="Title"><Input bind:value={title} maxlength={256} required /></Field>
+		<Field label="Body"><Textarea bind:value={body} maxlength={4000} required rows={6} /></Field>
+		<div class="grid gap-4 md:grid-cols-2">
+			<Field label="Ping a role" hint="Leave empty to post quietly.">
+				<RoleSelect roles={data.bundle.roles} bind:value={pingRoleId} />
+			</Field>
+			<Field label="Send later" hint="Leave empty to send now.">
+				<Input type="datetime-local" bind:value={schedule} />
+			</Field>
+		</div>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>{schedule ? 'Schedule' : 'Send now'}</Button>
+			<CreateChannel
+				guildId={data.bundle.guild.id}
+				purpose="announcements"
+				oncreated={(channel) => {
+					channelId = channel.id;
+				}}
+			/>
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
 
-<section class="panel">
-	<p class="kicker">Templates</p>
-	<p class="sub">
-		Save a canned announcement. The title and body can be plain text, or <a href="https://shopify.github.io/liquid/" target="_blank" rel="noopener noreferrer">Liquid</a>.
-	</p>
-	<div class="liquid-help">
-		<h2>Example</h2>
-		<p>Title</p>
-		<pre>{'{{ server | upcase }} downtime'}</pre>
-		<p>Body</p>
-		<pre>{'{{ server }} pauses at {{ when }}. Posted by {{ author }}.'}</pre>
-		<p>Put <code>when=Tonight</code> in Values for the next use, then press Use. The title is the server name in capitals, then the word downtime. The body names the server, Tonight, and you.</p>
-		<h2>Built-in variables</h2>
-		<dl>
+<Card size="xl" class="mb-6 flex-col gap-4 p-5">
+	<p class="text-xs font-semibold tracking-widest text-primary-600 uppercase">Templates</p>
+	<P>
+		Save a canned announcement. The title and body can be plain text, or <A href="https://shopify.github.io/liquid/" target="_blank" rel="noopener noreferrer">Liquid</A>.
+	</P>
+	<div class="grid gap-2">
+		<Heading tag="h2" class="font-display text-lg font-semibold">Example</Heading>
+		<P>Title</P>
+		<pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 font-mono text-sm whitespace-pre-wrap dark:bg-gray-900">{'{{ server | upcase }} downtime'}</pre>
+		<P>Body</P>
+		<pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 font-mono text-sm whitespace-pre-wrap dark:bg-gray-900">{'{{ server }} pauses at {{ when }}. Posted by {{ author }}.'}</pre>
+		<P>Put <code class="font-mono">when=Tonight</code> in Values for the next use, then press Use. The title is the server name in capitals, then the word downtime. The body names the server, Tonight, and you.</P>
+		<Heading tag="h2" class="mt-2 font-display text-lg font-semibold">Built-in variables</Heading>
+		<dl class="grid gap-3">
 			<div>
-				<dt><code>{'{{ server }}'}</code></dt>
-				<dd>The Discord server name. Write it in the title or the body. It is filled in when you press Use.</dd>
+				<dt><code class="font-mono">{'{{ server }}'}</code></dt>
+				<dd class="text-gray-600 dark:text-gray-300">The Discord server name. Write it in the title or the body. It is filled in when you press Use.</dd>
 			</div>
 			<div>
-				<dt><code>{'{{ author }}'}</code></dt>
-				<dd>Your Discord username. Write it in the title or the body. It is filled in when you press Use.</dd>
+				<dt><code class="font-mono">{'{{ author }}'}</code></dt>
+				<dd class="text-gray-600 dark:text-gray-300">Your Discord username. Write it in the title or the body. It is filled in when you press Use.</dd>
 			</div>
 		</dl>
-		<p>Any other name, such as <code>when</code>, comes from the values box. Write one <code>name=text</code> line for each.</p>
+		<P>Any other name, such as <code class="font-mono">when</code>, comes from the values box. Write one <code class="font-mono">name=text</code> line for each.</P>
 	</div>
-	<hr class="divider" />
+	<Hr />
 	<form
+		class="grid gap-4"
 		onsubmit={(event) => {
 			event.preventDefault();
 			saveTemplate();
 		}}
 	>
-		<Field label="Name"><input bind:value={templateName} maxlength="40" required /></Field>
-		<Field label="Title"><input bind:value={templateTitle} maxlength="256" required /></Field>
-		<Field label="Body"><textarea bind:value={templateBody} maxlength="4000" required></textarea></Field>
-		<div class="actions">
-			<button type="submit" disabled={templateBusy}>{templateID === null ? 'Save template' : 'Update template'}</button>
-			{#if templateID !== null}<button class="quiet" type="button" onclick={clearTemplate}>Cancel</button>{/if}
+		<Field label="Name"><Input bind:value={templateName} maxlength={40} required /></Field>
+		<Field label="Title"><Input bind:value={templateTitle} maxlength={256} required /></Field>
+		<Field label="Body"><Textarea bind:value={templateBody} maxlength={4000} required rows={6} /></Field>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={templateBusy}>{templateID === null ? 'Save template' : 'Update template'}</Button>
+			{#if templateID !== null}<Button color="alternative" type="button" onclick={clearTemplate}>Cancel</Button>{/if}
 			<Notice text={templateNotice} />
 		</div>
 	</form>
 	<Field label="Values for the next use" hint="One extra value per line, such as when=Tonight. Leave this empty when the template only needs server and author.">
-		<textarea class="values" bind:value={templateValues}></textarea>
+		<Textarea class="min-h-16" bind:value={templateValues} rows={3} />
 	</Field>
-	<section class="list">
+	<section class="list grid gap-3">
 		{#each data.templates as item (item.id)}
-			<article class="item">
-				<header>
+			<Card size="xl" class="flex-col gap-2 p-4">
+				<header class="flex items-baseline justify-between gap-3">
 					<strong>{item.name}</strong>
-					<span class="meta">{when(item.updatedAt)}</span>
+					<span class="font-mono text-sm text-gray-500">{when(item.updatedAt)}</span>
 				</header>
-				<p>{item.title}</p>
-				<p class="meta">{item.body}</p>
-				<div class="actions">
-					<button type="button" onclick={() => useTemplate(item.id)}>Use</button>
-					<button class="quiet" type="button" onclick={() => editTemplate(item)}>Edit</button>
-					<button class="danger" type="button" onclick={() => deleteTemplate(item.id)}>Delete</button>
+				<P>{item.title}</P>
+				<P class="font-mono text-sm">{item.body}</P>
+				<div class="flex flex-wrap gap-2">
+					<Button size="sm" type="button" onclick={() => useTemplate(item.id)}>Use</Button>
+					<Button color="alternative" size="sm" type="button" onclick={() => editTemplate(item)}>Edit</Button>
+					<Button color="red" size="sm" type="button" onclick={() => deleteTemplate(item.id)}>Delete</Button>
 				</div>
-			</article>
+			</Card>
 		{:else}
-			<p class="hint">No templates yet.</p>
+			<P class="text-sm">No templates yet.</P>
 		{/each}
 	</section>
-</section>
+</Card>
 
-<section class="list">
+<section class="list grid gap-3">
 	{#each data.announcements as item (item.id)}
-		<article class="item">
-			<header>
+		<Card size="xl" class="flex-col gap-2 p-4">
+			<header class="flex items-baseline justify-between gap-3">
 				<strong>{item.title}</strong>
-				<span class="meta">{item.status}</span>
+				<span class="font-mono text-sm text-gray-500">{item.status}</span>
 			</header>
-			<p>{item.body}</p>
-			<p class="meta">{item.authorName} · {when(item.sentAt || item.scheduledAt || item.createdAt)}{item.error ? ` · ${item.error}` : ''}</p>
+			<P>{item.body}</P>
+			<P class="font-mono text-sm">{item.authorName} · {when(item.sentAt || item.scheduledAt || item.createdAt)}{item.error ? ` · ${item.error}` : ''}</P>
 			{#if item.status !== 'sent'}
-				<div class="actions">
-					<button type="button" onclick={() => sendNow(item.id)}>Send now</button>
-					<button class="danger" type="button" onclick={() => remove(item.id)}>Delete</button>
+				<div class="flex flex-wrap gap-2">
+					<Button size="sm" type="button" onclick={() => sendNow(item.id)}>Send now</Button>
+					<Button color="red" size="sm" type="button" onclick={() => remove(item.id)}>Delete</Button>
 				</div>
 			{/if}
-		</article>
+		</Card>
 	{:else}
-		<p class="hint">No announcements yet.</p>
+		<P class="text-sm">No announcements yet.</P>
 	{/each}
 </section>

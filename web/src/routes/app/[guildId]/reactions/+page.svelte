@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { A, Button, Card, Input, P } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
@@ -7,6 +8,7 @@
 	import CreateRole from '#lib/CreateRole.svelte';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, ReactionRole } from '#lib/types';
 
@@ -80,58 +82,56 @@
 </script>
 
 <svelte:head><title>Reaction roles · SquirrelBot</title></svelte:head>
-<p class="kicker">Roles</p>
-<h1>Reaction roles</h1>
-<p class="sub">
-	Pick the channel where members choose roles. Click a reaction to get the role. Remove the reaction to drop it.
-	For a custom emoji, use name:id. SquirrelBot posts the message.
-</p>
-<form class="panel" onsubmit={add}>
-	<Field label="Roles channel" hint="SquirrelBot posts one message in this channel.">
-		<ChannelSelect channels={data.bundle.channels} bind:value={channelId} emptyLabel="Choose a channel" />
-	</Field>
-	<Field label="Emoji"><input bind:value={emoji} required /></Field>
-	<Field label="Role" hint="Pick a role, or create one.">
-		<RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} />
-	</Field>
-	<div class="actions">
-		<button type="submit" disabled={busy}>Add reaction role</button>
-		<CreateRole
-			guildId={data.bundle.guild.id}
-			oncreated={(role) => {
-				roleId = role.id;
-			}}
-		/>
-		<CreateChannel
-			guildId={data.bundle.guild.id}
-			purpose="roles"
-			after="Save the channel to use it."
-			oncreated={(channel) => {
-				channelId = channel.id;
-			}}
-		/>
-		{#if channelId && channelId !== data.bundle.guild.reactionChannelId}
-			<button class="quiet" type="button" disabled={busy} onclick={saveChannel}>Save channel</button>
-		{/if}
-		<Notice text={notice} />
-	</div>
-</form>
-<section class="list">
+<PageIntro kicker="Roles" title="Reaction roles">
+	<P>
+		Pick the channel where members choose roles. Click a reaction to get the role. Remove the reaction to drop it.
+		For a custom emoji, use name:id. SquirrelBot posts the message.
+	</P>
+</PageIntro>
+<Card size="xl" class="mb-6 flex-col p-5">
+	<form class="grid gap-4" onsubmit={add}>
+		<Field label="Roles channel" hint="SquirrelBot posts one message in this channel.">
+			<ChannelSelect channels={data.bundle.channels} bind:value={channelId} emptyLabel="Choose a channel" />
+		</Field>
+		<Field label="Emoji"><Input bind:value={emoji} required /></Field>
+		<Field label="Role" hint="Pick a role, or create one.">
+			<RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} />
+		</Field>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Add reaction role</Button>
+			<CreateRole
+				guildId={data.bundle.guild.id}
+				oncreated={(role) => {
+					roleId = role.id;
+				}}
+			/>
+			<CreateChannel
+				guildId={data.bundle.guild.id}
+				purpose="roles"
+				after="Save the channel to use it."
+				oncreated={(channel) => {
+					channelId = channel.id;
+				}}
+			/>
+			{#if channelId && channelId !== data.bundle.guild.reactionChannelId}
+				<Button color="alternative" type="button" disabled={busy} onclick={saveChannel}>Save channel</Button>
+			{/if}
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
+<section class="list grid gap-3">
 	{#if data.bundle.guild.reactionMessageId}
-		<p class="hint">
-			<a href={`https://discord.com/channels/${data.bundle.guild.id}/${data.bundle.guild.reactionChannelId}/${data.bundle.guild.reactionMessageId}`}>Open the roles message</a>
-		</p>
+		<P class="text-sm">
+			<A href={`https://discord.com/channels/${data.bundle.guild.id}/${data.bundle.guild.reactionChannelId}/${data.bundle.guild.reactionMessageId}`}>Open the roles message</A>
+		</P>
 	{/if}
 	{#each data.reactionRoles as item (item.id)}
-		<article class="item">
-			<header>
-				<strong>{item.emoji} · {roleName(item.roleId)}</strong>
-			</header>
-			<div class="actions">
-				<button class="danger" type="button" onclick={() => remove(item.id)}>Delete</button>
-			</div>
-		</article>
+		<Card size="xl" class="flex-row items-center justify-between gap-3 p-4">
+			<strong>{item.emoji} · {roleName(item.roleId)}</strong>
+			<Button color="red" size="sm" type="button" onclick={() => remove(item.id)}>Delete</Button>
+		</Card>
 	{:else}
-		<p class="hint">No reaction roles yet.</p>
+		<P class="text-sm">No reaction roles yet.</P>
 	{/each}
 </section>

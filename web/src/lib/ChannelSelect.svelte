@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Select } from 'flowbite-svelte';
 	import type { Channel } from '#lib/types';
 
 	let {
@@ -14,16 +15,11 @@
 		emptyLabel?: string;
 		prefix?: string;
 	} = $props();
+
+	let items = $derived([
+		...(allowEmpty ? [{ value: '', name: emptyLabel }] : []),
+		...channels.map((channel) => ({ value: channel.id, name: `${prefix}${channel.name}` }))
+	]);
 </script>
 
-<select
-	value={value}
-	onchange={(event) => {
-		value = event.currentTarget.value;
-	}}
->
-	{#if allowEmpty}<option value="">{emptyLabel}</option>{/if}
-	{#each channels as channel (channel.id)}
-		<option value={channel.id}>{prefix}{channel.name}</option>
-	{/each}
-</select>
+<Select {items} bind:value placeholder="" />

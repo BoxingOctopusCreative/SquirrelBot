@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Select } from 'flowbite-svelte';
 	import type { Role } from '#lib/types';
 
 	let {
@@ -12,16 +13,11 @@
 		allowEmpty?: boolean;
 		emptyLabel?: string;
 	} = $props();
+
+	let items = $derived([
+		...(allowEmpty ? [{ value: '', name: emptyLabel }] : []),
+		...roles.map((role) => ({ value: role.id, name: role.name, disabled: role.managed }))
+	]);
 </script>
 
-<select
-	value={value}
-	onchange={(event) => {
-		value = event.currentTarget.value;
-	}}
->
-	{#if allowEmpty}<option value="">{emptyLabel}</option>{/if}
-	{#each roles as role (role.id)}
-		<option value={role.id} disabled={role.managed}>{role.name}</option>
-	{/each}
-</select>
+<Select {items} bind:value placeholder="" />

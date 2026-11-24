@@ -7,9 +7,11 @@
 		<script>
 			try {
 				var storedTheme = localStorage.getItem('squirrelbot-theme');
+				var dark = storedTheme === 'dark' || (storedTheme !== 'light' && !window.matchMedia('(prefers-color-scheme: light)').matches);
 				if (storedTheme === 'dark' || storedTheme === 'light') {
 					document.documentElement.dataset.theme = storedTheme;
 				}
+				document.documentElement.classList.toggle('dark', dark);
 			} catch (e) {}
 		</script>
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />

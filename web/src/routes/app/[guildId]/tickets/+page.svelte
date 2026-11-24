@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { A, Button, Card, Heading, Input, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
@@ -6,6 +7,7 @@
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Ticket, TicketConfig } from '#lib/types';
 
@@ -61,123 +63,125 @@
 </script>
 
 <svelte:head><title>Support tickets · SquirrelBot</title></svelte:head>
-<p class="kicker">Help</p>
-<h1>Support tickets</h1>
-<p class="sub">
-	A member presses Open a ticket on the panel. A form asks for a subject and what they need. SquirrelBot opens a private channel for that member and the support role. Staff claim the ticket, then close it with a reason. Closing saves a transcript here, posts a copy in the transcript channel, and deletes the ticket channel ten seconds later. Reopen before then puts the ticket back.
-</p>
-<form
-	class="panel"
-	onsubmit={(event) => {
-		event.preventDefault();
-		save();
-	}}
->
-	<Field label="Panel channel" hint="The Open a ticket button is posted here. Members can read this channel.">
-		<ChannelSelect channels={data.bundle.channels} bind:value={cfg.panelChannelId} />
-	</Field>
-	<CreateChannel
-		guildId={data.bundle.guild.id}
-		purpose="ticket-panel"
-		label="Panel channel name"
-		after="Save tickets to use it."
-		oncreated={(channel) => {
-			cfg.panelChannelId = channel.id;
+<PageIntro kicker="Help" title="Support tickets">
+	<P>
+		A member presses Open a ticket on the panel. A form asks for a subject and what they need. SquirrelBot opens a private channel for that member and the support role. Staff claim the ticket, then close it with a reason. Closing saves a transcript here, posts a copy in the transcript channel, and deletes the ticket channel ten seconds later. Reopen before then puts the ticket back.
+	</P>
+</PageIntro>
+<Card size="xl" class="mb-6 flex-col p-5">
+	<form
+		class="grid gap-4"
+		onsubmit={(event) => {
+			event.preventDefault();
+			save();
 		}}
-	/>
-	<Field label="Ticket category" hint="New tickets are channels under this category. A category holds 50 channels.">
-		<ChannelSelect channels={data.bundle.categories} prefix="" bind:value={cfg.categoryId} />
-	</Field>
-	<CreateChannel
-		guildId={data.bundle.guild.id}
-		purpose="ticket-category"
-		kind="category"
-		label="Category name"
-		after="Save tickets to use it."
-		oncreated={(channel) => {
-			cfg.categoryId = channel.id;
-		}}
-	/>
-	<Field
-		label="Support role"
-		hint="This role can see every ticket, claim it, and close it. The mod role and admin role from Welcome can do that too."
 	>
-		<RoleSelect roles={data.bundle.roles} bind:value={cfg.supportRoleId} />
-	</Field>
-	<Field
-		label="Transcript channel"
-		hint="A copy of each closed ticket is posted here. Leave this empty to keep transcripts only in this dashboard. A channel you create here is hidden from members."
-	>
-		<ChannelSelect channels={data.bundle.channels} bind:value={cfg.logChannelId} />
-	</Field>
-	<CreateChannel
-		guildId={data.bundle.guild.id}
-		purpose="ticket-log"
-		label="Transcript channel name"
-		after="Save tickets to use it."
-		oncreated={(channel) => {
-			cfg.logChannelId = channel.id;
-		}}
-	/>
-	<Field label="Panel title">
-		<input bind:value={cfg.panelTitle} maxlength="80" required />
-	</Field>
-	<Field label="Panel message">
-		<textarea bind:value={cfg.panelBody} maxlength="800" required></textarea>
-	</Field>
-	<div class="actions">
-		<button type="submit" disabled={busy}>Save tickets</button>
-		<button type="button" disabled={busy} onclick={postPanel}>Save and post the panel</button>
-		<Notice text={notice} />
-	</div>
-</form>
+		<Field label="Panel channel" hint="The Open a ticket button is posted here. Members can read this channel.">
+			<ChannelSelect channels={data.bundle.channels} bind:value={cfg.panelChannelId} />
+		</Field>
+		<CreateChannel
+			guildId={data.bundle.guild.id}
+			purpose="ticket-panel"
+			label="Panel channel name"
+			after="Save tickets to use it."
+			oncreated={(channel) => {
+				cfg.panelChannelId = channel.id;
+			}}
+		/>
+		<Field label="Ticket category" hint="New tickets are channels under this category. A category holds 50 channels.">
+			<ChannelSelect channels={data.bundle.categories} prefix="" bind:value={cfg.categoryId} />
+		</Field>
+		<CreateChannel
+			guildId={data.bundle.guild.id}
+			purpose="ticket-category"
+			kind="category"
+			label="Category name"
+			after="Save tickets to use it."
+			oncreated={(channel) => {
+				cfg.categoryId = channel.id;
+			}}
+		/>
+		<Field
+			label="Support role"
+			hint="This role can see every ticket, claim it, and close it. The mod role and admin role from Welcome can do that too."
+		>
+			<RoleSelect roles={data.bundle.roles} bind:value={cfg.supportRoleId} />
+		</Field>
+		<Field
+			label="Transcript channel"
+			hint="A copy of each closed ticket is posted here. Leave this empty to keep transcripts only in this dashboard. A channel you create here is hidden from members."
+		>
+			<ChannelSelect channels={data.bundle.channels} bind:value={cfg.logChannelId} />
+		</Field>
+		<CreateChannel
+			guildId={data.bundle.guild.id}
+			purpose="ticket-log"
+			label="Transcript channel name"
+			after="Save tickets to use it."
+			oncreated={(channel) => {
+				cfg.logChannelId = channel.id;
+			}}
+		/>
+		<Field label="Panel title">
+			<Input bind:value={cfg.panelTitle} maxlength={80} required />
+		</Field>
+		<Field label="Panel message">
+			<Textarea bind:value={cfg.panelBody} maxlength={800} required rows={6} />
+		</Field>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Save tickets</Button>
+			<Button type="button" disabled={busy} onclick={postPanel}>Save and post the panel</Button>
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
 
-<section class="list" aria-labelledby="open-tickets">
-	<h2 id="open-tickets">Open tickets</h2>
+<section class="list mb-6 grid gap-3" aria-labelledby="open-tickets">
+	<Heading id="open-tickets" tag="h2" class="font-display text-xl font-semibold">Open tickets</Heading>
 	{#each data.open as item (item.id)}
-		<article class="item">
-			<header>
-				<h3>Ticket {item.number}: {item.subject}</h3>
-				<span class="meta">{when(item.createdAt)}</span>
+		<Card size="xl" class="flex-col gap-2 p-4">
+			<header class="flex items-baseline justify-between gap-3">
+				<Heading tag="h3" class="font-display text-lg font-semibold">Ticket {item.number}: {item.subject}</Heading>
+				<span class="font-mono text-sm text-gray-500">{when(item.createdAt)}</span>
 			</header>
-			<p>{item.body}</p>
-			<p class="meta">{item.openerName} · {claimLine(item)} · Open</p>
+			<P>{item.body}</P>
+			<P class="font-mono text-sm">{item.openerName} · {claimLine(item)} · Open</P>
 			{#if item.channelId}
-				<p><a href={discordLink(item.channelId)} target="_blank" rel="noreferrer">Open ticket {item.number} in Discord</a></p>
+				<P><A href={discordLink(item.channelId)} target="_blank" rel="noreferrer">Open ticket {item.number} in Discord</A></P>
 			{/if}
-		</article>
+		</Card>
 	{:else}
-		<p class="hint">No open tickets.</p>
+		<P class="text-sm">No open tickets.</P>
 	{/each}
 </section>
 
-<section class="list" aria-labelledby="closed-tickets">
-	<h2 id="closed-tickets">Closed tickets</h2>
+<section class="list grid gap-3" aria-labelledby="closed-tickets">
+	<Heading id="closed-tickets" tag="h2" class="font-display text-xl font-semibold">Closed tickets</Heading>
 	{#each data.closed as item (item.id)}
-		<article class="item">
-			<header>
-				<h3>Ticket {item.number}: {item.subject}</h3>
-				<span class="meta">{when(item.closedAt || item.createdAt)}</span>
+		<Card size="xl" class="flex-col gap-2 p-4">
+			<header class="flex items-baseline justify-between gap-3">
+				<Heading tag="h3" class="font-display text-lg font-semibold">Ticket {item.number}: {item.subject}</Heading>
+				<span class="font-mono text-sm text-gray-500">{when(item.closedAt || item.createdAt)}</span>
 			</header>
-			<p>{item.body}</p>
-			<p class="meta">
+			<P>{item.body}</P>
+			<P class="font-mono text-sm">
 				{item.openerName} · {item.status === 'deleted' ? 'Channel deleted' : 'Closed'}
 				{#if item.closedByName}· {item.closedByName}{/if}
-			</p>
-			{#if item.closeReason}<p>{item.closeReason}</p>{/if}
+			</P>
+			{#if item.closeReason}<P>{item.closeReason}</P>{/if}
 			{#if item.channelId && item.status !== 'deleted'}
-				<p><a href={discordLink(item.channelId)} target="_blank" rel="noreferrer">Open ticket {item.number} in Discord</a></p>
+				<P><A href={discordLink(item.channelId)} target="_blank" rel="noreferrer">Open ticket {item.number} in Discord</A></P>
 			{/if}
 			{#if item.transcript}
-				<details>
-					<summary>Transcript for ticket {item.number}</summary>
-					<pre>{item.transcript}</pre>
+				<details class="rounded-lg border border-gray-200 p-3 dark:border-gray-600">
+					<summary class="cursor-pointer font-medium">Transcript for ticket {item.number}</summary>
+					<pre class="mt-3 font-mono text-sm whitespace-pre-wrap">{item.transcript}</pre>
 				</details>
 			{:else}
-				<p class="hint">No transcript was saved.</p>
+				<P class="text-sm">No transcript was saved.</P>
 			{/if}
-		</article>
+		</Card>
 	{:else}
-		<p class="hint">No closed tickets.</p>
+		<P class="text-sm">No closed tickets.</P>
 	{/each}
 </section>
