@@ -77,7 +77,7 @@ func TestTicketChannelText(t *testing.T) {
 		Number: 4, Status: TicketClosed, Subject: "Map pin", Body: "The pin is missing.",
 		ClosedByName: "Ada", CloseReason: "Fixed the pin.",
 	})
-	if !hasAll(closed, "Ticket 4 is closed.", "Closed by Ada.", "Fixed the pin.", "Reopen puts this ticket back.") {
+	if !hasAll(closed, "Ticket 4 is closed.", "Closed by Ada.", "Fixed the pin.", "deleted in 10 seconds", "Reopen before then puts the ticket back.") {
 		t.Fatalf("closed text %q", closed)
 	}
 }

@@ -64,7 +64,7 @@
 <p class="kicker">Help</p>
 <h1>Support tickets</h1>
 <p class="sub">
-	A member presses Open a ticket on the panel. A form asks for a subject and what they need. SquirrelBot opens a private channel for that member and the support role. Staff claim the ticket, then close it with a reason. Closing saves a transcript here and posts a copy in the transcript channel. Reopen puts the ticket back. Delete asks for the ticket number, then removes the channel.
+	A member presses Open a ticket on the panel. A form asks for a subject and what they need. SquirrelBot opens a private channel for that member and the support role. Staff claim the ticket, then close it with a reason. Closing saves a transcript here, posts a copy in the transcript channel, and deletes the ticket channel ten seconds later. Reopen before then puts the ticket back.
 </p>
 <form
 	class="panel"

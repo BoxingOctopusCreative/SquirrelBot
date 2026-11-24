@@ -20,6 +20,9 @@ const (
 	TicketClosed  = "closed"
 	TicketDeleted = "deleted"
 
+	// TicketDeleteSeconds is how long a closed ticket channel stays before it is removed.
+	TicketDeleteSeconds = 10
+
 	DefaultTicketTitle = "Support"
 	DefaultTicketBody  = "Open a ticket and a private channel is created for you and the support team."
 )
@@ -154,7 +157,7 @@ func TicketChannelText(v TicketView) string {
 			reason = "No reason given."
 		}
 		fmt.Fprintf(&b, "Reason: %s\n\n", reason)
-		b.WriteString("The transcript is saved. Reopen puts this ticket back. Delete asks for the ticket number, then removes the channel.\n\n")
+		fmt.Fprintf(&b, "The transcript is saved. This channel will be deleted in %d seconds. Reopen before then puts the ticket back.\n\n", TicketDeleteSeconds)
 	} else {
 		fmt.Fprintf(&b, "Ticket %d is open.\n", v.Number)
 		if v.OpenerID != "" {

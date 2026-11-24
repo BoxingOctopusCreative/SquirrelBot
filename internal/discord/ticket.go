@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/BoxingOctopus/squirrelbot/internal/domain"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
@@ -85,7 +86,7 @@ func (b *Bot) ticketComponent(s *discordgo.Session, i *discordgo.InteractionCrea
 	case "close":
 		b.promptCloseTicket(s, i, id)
 	case "delete":
-		b.promptDeleteTicket(s, i, id)
+		b.deleteTicket(s, i, id)
 	case "claim", "release", "reopen":
 		b.ticketButton(s, i, action, id)
 	default:
@@ -239,35 +240,37 @@ func (b *Bot) ticketButton(s *discordgo.Session, i *discordgo.InteractionCreate,
 			followupEphemeral(s, i, "You don't have permission to do that.")
 			return
 		}
-		item, claimed, err := b.store.ClaimTicket(ctx, i.GuildID, id, userID, name)
+		claimedItem, claimed, err := b.store.ClaimTicket(ctx, i.GuildID, id, userID, name)
 		if err != nil {
 			b.log.Error("ticket claim", "guild", i.GuildID, "err", err)
 			followupEphemeral(s, i, "I could not claim that ticket.")
 			return
 		}
 		if !claimed {
-			followupEphemeral(s, i, claimBlocked(item, userID))
+			followupEphemeral(s, i, claimBlocked(claimedItem, userID))
 			return
 		}
+		item = claimedItem
 	case "release":
 		if !staff {
 			followupEphemeral(s, i, "You don't have permission to do that.")
 			return
 		}
-		item, released, err := b.store.ReleaseTicket(ctx, i.GuildID, id)
+		releasedItem, released, err := b.store.ReleaseTicket(ctx, i.GuildID, id)
 		if err != nil {
 			b.log.Error("ticket release", "guild", i.GuildID, "err", err)
 			followupEphemeral(s, i, "I could not release that ticket.")
 			return
 		}
 		if !released {
-			if item.Status != domain.TicketOpen {
+			if releasedItem.Status != domain.TicketOpen {
 				followupEphemeral(s, i, "This ticket is already closed.")
 				return
 			}
 			followupEphemeral(s, i, "Nobody has claimed this ticket.")
 			return
 		}
+		item = releasedItem
 	case "reopen":
 		if !staff && !(userID == item.OpenerID && userID == item.ClosedByID) {
 			if item.Status == domain.TicketClosed && userID == item.OpenerID {
@@ -277,22 +280,23 @@ func (b *Bot) ticketButton(s *discordgo.Session, i *discordgo.InteractionCreate,
 			followupEphemeral(s, i, "You don't have permission to do that.")
 			return
 		}
-		item, opened, err := b.store.ReopenTicket(ctx, i.GuildID, id)
+		openedItem, opened, err := b.store.ReopenTicket(ctx, i.GuildID, id)
 		if err != nil {
 			b.log.Error("ticket reopen", "guild", i.GuildID, "err", err)
 			followupEphemeral(s, i, "I could not reopen that ticket.")
 			return
 		}
 		if !opened {
-			followupEphemeral(s, i, reopenBlocked(item))
+			followupEphemeral(s, i, reopenBlocked(openedItem))
 			return
 		}
+		item = openedItem
 		if err := b.applyTicketAccess(item.ChannelID, i.GuildID, cfg.SupportRoleID, item.OpenerID, true); err != nil {
 			b.log.Warn("ticket access", "guild", i.GuildID, "err", err)
 			followupEphemeral(s, i, "Reopened ticket "+fmt.Sprint(item.Number)+", but I could not restore channel access. Check that my role can manage channels.")
 		}
 	}
-	if err := b.syncTicketMessage(cfg, item); err != nil {
+	if err := b.presentTicket(s, i, cfg, item); err != nil {
 		b.log.Warn("ticket message", "guild", i.GuildID, "err", err)
 		followupEphemeral(s, i, "I updated the ticket, but I could not update the message in the channel.")
 	}
@@ -385,59 +389,92 @@ func (b *Bot) submitCloseTicket(s *discordgo.Session, i *discordgo.InteractionCr
 	if err := b.applyTicketAccess(item.ChannelID, i.GuildID, cfg.SupportRoleID, item.OpenerID, false); err != nil {
 		b.log.Warn("ticket lock", "guild", i.GuildID, "err", err)
 	}
-	reply := fmt.Sprintf("Closed ticket %d. The transcript is saved.", item.Number)
+	reply := fmt.Sprintf("Closed ticket %d. The transcript is saved. This channel will be deleted in %d seconds.", item.Number, domain.TicketDeleteSeconds)
 	if domain.ValidSnowflake(cfg.LogChannelID) {
 		if err := b.postTicketTranscript(cfg.LogChannelID, item, transcript); err != nil {
 			b.log.Warn("ticket transcript", "guild", i.GuildID, "err", err)
-			reply = fmt.Sprintf("Closed ticket %d. The transcript is saved in the dashboard. I could not post it to the transcript channel.", item.Number)
+			reply = fmt.Sprintf("Closed ticket %d. The transcript is saved in the dashboard. I could not post it to the transcript channel. This channel will be deleted in %d seconds.", item.Number, domain.TicketDeleteSeconds)
 		}
 	}
 	editReply(s, i, reply)
+	go b.removeClosedTicket(i.GuildID, id, item.ChannelID)
 }
 
-func (b *Bot) promptDeleteTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64) {
+func (b *Bot) removeClosedTicket(guildID string, id int64, channelID string) {
+	timer := time.NewTimer(time.Duration(domain.TicketDeleteSeconds) * time.Second)
+	defer timer.Stop()
+	<-timer.C
+	ctx, cancel := contextTimeout()
+	defer cancel()
+	if _, err := b.finishClosedTicket(ctx, guildID, id, channelID); err != nil {
+		b.log.Warn("ticket channel delete", "guild", guildID, "ticket", id, "channel", channelID, "err", err)
+	}
+}
+
+func (b *Bot) deleteTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64) {
 	if _, _, ok := ticketMember(i); !ok {
 		_ = respondEphemeral(s, i, "Use this button in a server.")
+		return
+	}
+	if err := deferComponent(s, i); err != nil {
 		return
 	}
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	cfg, item, errText := b.ticketForButton(ctx, i, id)
 	if errText != "" {
-		_ = respondEphemeral(s, i, errText)
+		followupEphemeral(s, i, errText)
 		return
 	}
 	if !b.memberIsTicketStaff(ctx, i, cfg.SupportRoleID) {
-		_ = respondEphemeral(s, i, "You don't have permission to do that.")
+		followupEphemeral(s, i, "You don't have permission to do that.")
 		return
 	}
-	if item.Status == domain.TicketOpen {
-		_ = respondEphemeral(s, i, "Close the ticket first. Closing saves the transcript.")
+	if item.Status != domain.TicketClosed {
+		if item.Status == domain.TicketOpen {
+			followupEphemeral(s, i, "Close the ticket first. Closing saves the transcript.")
+			return
+		}
+		followupEphemeral(s, i, "That ticket channel was already deleted.")
 		return
 	}
-	if item.Status == domain.TicketDeleted {
-		_ = respondEphemeral(s, i, "That ticket channel was already deleted.")
-		return
-	}
-	number := fmt.Sprint(item.Number)
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseModal,
-		Data: &discordgo.InteractionResponseData{
-			CustomID: domain.TicketCustomID("delete-form", id),
-			Title:    clipModalTitle(fmt.Sprintf("Delete ticket %d", item.Number)),
-			Components: []discordgo.MessageComponent{
-				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-					discordgo.TextInput{
-						CustomID: "number", Label: "Ticket number", Style: discordgo.TextInputShort,
-						Placeholder: number, Required: true, MinLength: 1, MaxLength: 12,
-					},
-				}},
-			},
-		},
-	})
+	removed, err := b.finishClosedTicket(ctx, i.GuildID, id, item.ChannelID)
 	if err != nil {
-		b.log.Warn("ticket delete form", "guild", i.GuildID, "err", err)
+		if statusOf(err) == 0 {
+			b.log.Error("ticket delete", "guild", i.GuildID, "ticket", id, "err", err)
+			followupEphemeral(s, i, "I could not delete that ticket.")
+			return
+		}
+		followupEphemeral(s, i, "Discord refused to delete that channel. The transcript is still saved.")
+		return
 	}
+	if !removed {
+		current, getErr := b.store.GetTicket(ctx, i.GuildID, id)
+		if getErr == nil && current.Status == domain.TicketOpen {
+			followupEphemeral(s, i, "This ticket is already open.")
+			return
+		}
+		followupEphemeral(s, i, "That ticket channel was already deleted.")
+		return
+	}
+	followupEphemeral(s, i, fmt.Sprintf("Deleted ticket %d. The transcript stays in the dashboard.", item.Number))
+}
+
+func (b *Bot) finishClosedTicket(ctx context.Context, guildID string, id int64, channelID string) (bool, error) {
+	deleted, err := b.store.MarkTicketDeleted(ctx, guildID, id)
+	if err != nil || !deleted {
+		return false, err
+	}
+	if channelID == "" {
+		return true, nil
+	}
+	if _, err := b.session.ChannelDelete(channelID); err != nil && statusOf(err) != 404 {
+		if _, restoreErr := b.store.UnmarkTicketDeleted(ctx, guildID, id); restoreErr != nil {
+			b.log.Error("ticket delete restore", "guild", guildID, "ticket", id, "err", restoreErr)
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (b *Bot) submitDeleteTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64) {
@@ -472,16 +509,18 @@ func (b *Bot) submitDeleteTicket(s *discordgo.Session, i *discordgo.InteractionC
 		editReply(s, i, fmt.Sprintf("Type %d to delete this ticket. The channel is still there.", item.Number))
 		return
 	}
-	if item.ChannelID != "" {
-		if _, err := b.session.ChannelDelete(item.ChannelID); err != nil && statusOf(err) != 404 {
-			editReply(s, i, "Discord refused to delete that channel. The transcript is still saved.")
+	removed, err := b.finishClosedTicket(ctx, i.GuildID, id, item.ChannelID)
+	if err != nil {
+		if statusOf(err) == 0 {
+			b.log.Error("ticket delete", "guild", i.GuildID, "ticket", id, "err", err)
+			editReply(s, i, "I could not delete that ticket.")
 			return
 		}
+		editReply(s, i, "Discord refused to delete that channel. The transcript is still saved.")
+		return
 	}
-	deleted, err := b.store.MarkTicketDeleted(ctx, i.GuildID, id)
-	if err != nil || !deleted {
-		b.log.Error("ticket delete", "guild", i.GuildID, "err", err)
-		editReply(s, i, "The channel was deleted, but I could not update the record. The transcript is still saved.")
+	if !removed {
+		editReply(s, i, "That ticket channel was already deleted.")
 		return
 	}
 	editReply(s, i, fmt.Sprintf("Deleted ticket %d. The transcript stays in the dashboard.", item.Number))
@@ -577,6 +616,27 @@ func (b *Bot) sendTicketControl(cfg store.TicketConfig, item store.Ticket) (stri
 		}
 	}
 	return sent.ID, nil
+}
+
+func (b *Bot) presentTicket(s *discordgo.Session, i *discordgo.InteractionCreate, cfg store.TicketConfig, item store.Ticket) error {
+	content := domain.TicketChannelText(ticketView(cfg, item))
+	components := ticketComponents(item)
+	mentions := ticketMentions(item.OpenerID, item.ClaimerID, cfg.SupportRoleID)
+	clicked := ""
+	if i != nil && i.Message != nil {
+		clicked = i.Message.ID
+	}
+	if clicked != "" {
+		_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content, Components: &components, AllowedMentions: mentions,
+		})
+		if err != nil {
+			b.log.Warn("ticket interaction edit", "guild", item.GuildID, "err", err)
+		} else if clicked == item.ControlMessageID {
+			return nil
+		}
+	}
+	return b.syncTicketMessage(cfg, item)
 }
 
 func (b *Bot) syncTicketMessage(cfg store.TicketConfig, item store.Ticket) error {
