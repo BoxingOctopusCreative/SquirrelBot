@@ -18,7 +18,7 @@
 	<p>A confession goes to moderators before it is posted. The public post leaves the author's name off. Moderators can see who sent it, in the review channel and in the dashboard's records. You can attach one file. That file is posted in Discord with the confession. Send only text and files you have the right to share.</p>
 
 	<h2>Support tickets</h2>
-	<p>A ticket is a private channel between you and the support role that server chose. The subject, your request, and the messages in that channel are saved when the ticket is closed. Staff of that server can read the transcript in the dashboard. Send only text and files you have the right to share.</p>
+	<p>A ticket is a private channel between you and the support role that server chose. The subject, your request, and the messages in that channel are saved when the ticket is closed. The channel is deleted ten seconds later. Staff of that server can read the transcript in the dashboard. Send only text and files you have the right to share.</p>
 
 	<h2>Acceptable use</h2>
 	<p>Use the bot for the server that installed it. Do not use it to harass someone, to break into an account or a server, or to get around a limit the bot enforces. Follow the rules of the server you are in. Follow Discord's rules when you use the bot.</p>

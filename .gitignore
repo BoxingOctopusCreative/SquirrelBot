@@ -11,3 +11,6 @@ web/blob-report/
 .DS_Store
 *.exe
 coverage.out
+*.mdc
+.cursor/
+.specify/

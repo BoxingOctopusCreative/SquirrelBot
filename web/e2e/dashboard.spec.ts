@@ -177,6 +177,7 @@ test.describe('dashboard', () => {
 		await expect(page.getByText('Message posted.')).toBeVisible();
 		await page.reload();
 		await expect(page.getByRole('heading', { name: 'Support tickets', exact: true })).toBeVisible();
+		await expect(page.getByText(/deletes the ticket channel ten seconds later/)).toBeVisible();
 		await expect(page.getByRole('combobox', { name: /Panel channel/ }).locator('option:checked')).toHaveText('#general');
 		await expect(page.getByRole('combobox', { name: /Ticket category/ })).not.toHaveValue('');
 		await expect(page.getByRole('combobox', { name: /Transcript channel/ })).not.toHaveValue('');

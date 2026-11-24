@@ -18,7 +18,7 @@
 				<li><strong>Mod team announcements</strong><span>Post once, in the channel you choose, now or later.</span></li>
 				<li><strong>Temporary staff</strong><span>Lend a mod or admin role, then take it back when the time ends.</span></li>
 				<li><strong>Server application</strong><span>Kick members who do not finish the questions in time.</span></li>
-				<li><strong>Support tickets</strong><span>A private channel for one member and the support role, with a transcript when it closes.</span></li>
+				<li><strong>Support tickets</strong><span>A private channel for one member and the support role. Closing saves a transcript, then removes the channel.</span></li>
 			</ul>
 		</div>
 		{#if problem}<p class="banner" role="alert">Discord did not finish sign-in. Try again.</p>{/if}

@@ -35,7 +35,7 @@
 
 	<h2>What stays in Discord</h2>
 	<p>The bot can read message text in a server where it is installed. It uses that text for automod, prefix commands, starboard, and delete or edit logs. Those logs are posted to a channel the server chose. The message text is not copied into the database for that purpose.</p>
-	<p>A support ticket is different. When a ticket is closed, the bot copies the messages from that ticket channel into a transcript. The transcript is saved so staff can read it after the channel is deleted, and a copy can be posted in the transcript channel the server chose.</p>
+	<p>A support ticket is different. When a ticket is closed, the bot copies the messages from that ticket channel into a transcript. The channel is deleted ten seconds later. The transcript is saved so staff can read it after the channel is gone, and a copy can be posted in the transcript channel the server chose.</p>
 	<p>A confession file is read so the bot can post it in Discord. The file is not saved in the database. After it is posted, Discord hosts it. The public confession does not include the author's name. Moderators can still see the author on the review post.</p>
 
 	<h2>Who can see it</h2>

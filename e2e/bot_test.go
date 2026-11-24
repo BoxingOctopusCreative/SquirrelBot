@@ -168,6 +168,90 @@ func setPrefix(t *testing.T, prefix string) {
 	must(t, status, body, http.StatusOK)
 }
 
+func TestDeleteButtonRemovesClosedTicketChannel(t *testing.T) {
+	status, body := call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/channels", map[string]any{
+		"name": "Delete test", "purpose": "ticket-category",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusCreated)
+	categoryID, _ := asMap(t, body)["id"].(string)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/tickets", map[string]any{
+		"panelChannelId": harness.GeneralChannelID,
+		"categoryId":     categoryID,
+		"supportRoleId":  harness.ModRoleID,
+		"logChannelId":   harness.AnnounceChannelID,
+		"panelTitle":     "Help",
+		"panelBody":      "Tell us what you need.",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
+	member := &discordgo.Member{
+		User:        &discordgo.User{ID: harness.UserID, Username: "acorn", GlobalName: harness.UserName},
+		Roles:       []string{harness.AdminRoleID},
+		Permissions: domain.PermAdministrator,
+	}
+	opened := modalInteraction(t, domain.TicketCustomID("form", 0), harness.GeneralChannelID, member,
+		textRow("subject", "Map pin"),
+		textRow("details", "The pin is missing."),
+	)
+	stack.Bot.HandleInteraction(opened)
+	reply, ok := stack.Discord.InteractionContent(opened.ID)
+	if !ok || !strings.Contains(reply, "Opened ticket") {
+		t.Fatalf("open reply %q", reply)
+	}
+
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/tickets", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	openItems, _ := asMap(t, body)["open"].([]any)
+	if len(openItems) != 1 {
+		t.Fatalf("open tickets %s", body)
+	}
+	item := openItems[0].(map[string]any)
+	ticketID := int64(item["id"].(float64))
+	channelID, _ := item["channelId"].(string)
+	if channelID == "" {
+		t.Fatal("ticket has no channel")
+	}
+	messages := stack.Discord.Messages(channelID)
+	if len(messages) == 0 {
+		t.Fatal("ticket channel has no control message")
+	}
+	claim := componentInteraction(t, domain.TicketCustomID("claim", ticketID), channelID, member)
+	claim.Message = &discordgo.Message{ID: messages[0].ID, ChannelID: channelID}
+	stack.Bot.HandleInteraction(claim)
+	reply, ok = stack.Discord.InteractionContent(claim.ID)
+	if !ok || !strings.Contains(reply, "Claimed by <@"+harness.UserID+">") {
+		t.Fatalf("claim message %q", reply)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/tickets", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	openItems, _ = asMap(t, body)["open"].([]any)
+	if len(openItems) != 1 || openItems[0].(map[string]any)["claimerName"] == "" {
+		t.Fatalf("dashboard claim %s", body)
+	}
+
+	stack.Bot.HandleInteraction(componentInteraction(t, domain.TicketCustomID("close", ticketID), channelID, member))
+	closed := modalInteraction(t, domain.TicketCustomID("close-form", ticketID), channelID, member, textRow("reason", "Fixed the pin."))
+	stack.Bot.HandleInteraction(closed)
+	reply, ok = stack.Discord.InteractionContent(closed.ID)
+	if !ok || !strings.Contains(reply, "will be deleted in 10 seconds") {
+		t.Fatalf("close reply %q", reply)
+	}
+
+	stack.Bot.HandleInteraction(componentInteraction(t, domain.TicketCustomID("delete", ticketID), channelID, member))
+	if _, found := stack.Discord.Channel(channelID); found {
+		t.Fatal("delete left the ticket channel")
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/tickets", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	for _, raw := range asMap(t, body)["closed"].([]any) {
+		row := raw.(map[string]any)
+		if int64(row["id"].(float64)) == ticketID && row["status"] == "deleted" {
+			return
+		}
+	}
+	t.Fatalf("closed tickets %s", body)
+}
+
 func moderatorCommand(t *testing.T, name, channelID string, options ...*discordgo.ApplicationCommandInteractionDataOption) *discordgo.InteractionCreate {
 	t.Helper()
 	return commandInteraction(t, name, channelID, &discordgo.Member{
@@ -211,6 +295,48 @@ func intOption(name string, value int) *discordgo.ApplicationCommandInteractionD
 	return &discordgo.ApplicationCommandInteractionDataOption{
 		Name: name, Type: discordgo.ApplicationCommandOptionInteger, Value: float64(value),
 	}
+}
+
+func componentInteraction(t *testing.T, customID, channelID string, member *discordgo.Member) *discordgo.InteractionCreate {
+	t.Helper()
+	n := interactionSeq.Add(1)
+	return &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		ID:        fmt.Sprintf("9100000000000%05d", n),
+		AppID:     harness.BotUserID,
+		Token:     fmt.Sprintf("token-%d", n),
+		Type:      discordgo.InteractionMessageComponent,
+		GuildID:   harness.GuildID,
+		ChannelID: channelID,
+		Member:    member,
+		Data: discordgo.MessageComponentInteractionData{
+			CustomID:      customID,
+			ComponentType: discordgo.ButtonComponent,
+		},
+	}}
+}
+
+func modalInteraction(t *testing.T, customID, channelID string, member *discordgo.Member, rows ...discordgo.MessageComponent) *discordgo.InteractionCreate {
+	t.Helper()
+	n := interactionSeq.Add(1)
+	return &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		ID:        fmt.Sprintf("9100000000000%05d", n),
+		AppID:     harness.BotUserID,
+		Token:     fmt.Sprintf("token-%d", n),
+		Type:      discordgo.InteractionModalSubmit,
+		GuildID:   harness.GuildID,
+		ChannelID: channelID,
+		Member:    member,
+		Data: discordgo.ModalSubmitInteractionData{
+			CustomID:   customID,
+			Components: rows,
+		},
+	}}
+}
+
+func textRow(customID, value string) discordgo.MessageComponent {
+	return &discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+		&discordgo.TextInput{CustomID: customID, Value: value},
+	}}
 }
 
 func assertReply(t *testing.T, interactionID, want string) {

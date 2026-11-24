@@ -282,6 +282,16 @@ func (s *Store) MarkTicketDeleted(ctx context.Context, guildID string, id int64)
 	return tag.RowsAffected() > 0, nil
 }
 
+func (s *Store) UnmarkTicketDeleted(ctx context.Context, guildID string, id int64) (bool, error) {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE tickets SET status = 'closed'
+		WHERE id = $1 AND guild_id = $2 AND status = 'deleted'`, id, guildID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (s *Store) ListTickets(ctx context.Context, guildID string) (open []Ticket, closed []Ticket, err error) {
 	open = []Ticket{}
 	closed = []Ticket{}
