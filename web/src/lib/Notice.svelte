@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { Alert } from 'flowbite-svelte';
+
 	let { text = '', ok = false }: { text?: string; ok?: boolean } = $props();
 
 	let positive = $derived(
@@ -11,5 +13,5 @@
 </script>
 
 {#if text}
-	<p class={['banner', { ok: positive }]} role="status">{text}</p>
+	<Alert color={positive ? 'green' : 'red'} role="status" class="w-full">{text}</Alert>
 {/if}

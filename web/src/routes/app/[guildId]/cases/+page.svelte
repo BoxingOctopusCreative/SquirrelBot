@@ -1,25 +1,27 @@
 <script lang="ts">
+	import { Card, Heading, P } from 'flowbite-svelte';
 	import { when } from '#lib/api';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import type { ModCase } from '#lib/types';
 
 	let { data }: { data: { cases: ModCase[] } } = $props();
 </script>
 
 <svelte:head><title>Cases · SquirrelBot</title></svelte:head>
-<p class="kicker">Record</p>
-<h1>Cases</h1>
-<p class="sub">Warns, kicks, bans, timeouts, admin firecall access, and application kicks.</p>
-<section class="list">
+<PageIntro kicker="Record" title="Cases">
+	<P>Warns, kicks, bans, timeouts, admin firecall access, and application kicks.</P>
+</PageIntro>
+<section class="list grid gap-3">
 	{#each data.cases as item (item.id)}
-		<article class="item">
-			<header>
-				<h2>#{item.caseNumber} {item.action === 'gate_kick' ? 'application kick' : item.action}</h2>
-				<span class="meta">{when(item.createdAt)}</span>
+		<Card size="xl" class="flex-col gap-1 p-4">
+			<header class="flex items-baseline justify-between gap-3">
+				<Heading tag="h2" class="font-display text-lg font-semibold">#{item.caseNumber} {item.action === 'gate_kick' ? 'application kick' : item.action}</Heading>
+				<span class="font-mono text-sm text-gray-500">{when(item.createdAt)}</span>
 			</header>
-			<p>{item.targetName || item.targetId}</p>
-			<p class="meta">{item.moderatorName} · {item.reason || 'No reason given.'}</p>
-		</article>
+			<P>{item.targetName || item.targetId}</P>
+			<P class="font-mono text-sm">{item.moderatorName} · {item.reason || 'No reason given.'}</P>
+		</Card>
 	{:else}
-		<p class="hint">No cases yet.</p>
+		<P class="text-sm">No cases yet.</P>
 	{/each}
 </section>

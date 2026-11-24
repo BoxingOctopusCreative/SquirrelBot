@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { refreshAll } from '$app/navigation';
+	import { Button, Input, Label } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import Notice from '#lib/Notice.svelte';
@@ -50,19 +51,19 @@
 	}
 </script>
 
-<div class="field">
-	<label for={inputId}>Role name</label>
-	<div class="actions">
-		<input
+<div class="grid gap-1.5">
+	<Label for={inputId}>Role name</Label>
+	<div class="flex flex-wrap items-center gap-2">
+		<Input
 			id={inputId}
-			class="role-name"
+			class="w-48"
 			bind:value={roleName}
-			maxlength="100"
+			maxlength={100}
 			placeholder="Role name"
 			disabled={busy}
 			onkeydown={onKeydown}
 		/>
-		<button class="quiet" type="button" disabled={busy} onclick={create}>Create role</button>
+		<Button color="alternative" type="button" disabled={busy} onclick={create}>Create role</Button>
 	</div>
 	<Notice text={notice} />
 </div>

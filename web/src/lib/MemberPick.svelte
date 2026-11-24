@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Input, Label } from 'flowbite-svelte';
 	import { onMount, tick } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import type { MemberHit } from '#lib/types';
@@ -109,10 +110,10 @@
 
 <svelte:window onclick={onWindowClick} />
 
-<div class="field member-field">
-	<label id="{listId}-label" for={inputId}>Find a member</label>
-	<div class="member-pick">
-		<input
+<div class="member-field grid gap-1.5">
+	<Label id="{listId}-label" for={inputId}>Find a member</Label>
+	<div class="relative">
+		<Input
 			id={inputId}
 			role="combobox"
 			aria-autocomplete="list"
@@ -128,13 +129,17 @@
 			onkeydown={onKeydown}
 		/>
 		{#if open}
-			<ul class="member-menu" id={listId} role="listbox">
+			<ul
+				class="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white p-1 dark:border-gray-600 dark:bg-gray-800"
+				id={listId}
+				role="listbox"
+			>
 				{#if !ready}
-					<li class="hint">Loading members.</li>
+					<li class="px-3 py-2 text-sm text-gray-500">Loading members.</li>
 				{:else if loadError}
-					<li class="hint" role="status">{loadError}</li>
+					<li class="px-3 py-2 text-sm text-gray-500" role="status">{loadError}</li>
 				{:else if shown.length === 0}
-					<li class="hint">No members match.</li>
+					<li class="px-3 py-2 text-sm text-gray-500">No members match.</li>
 				{:else}
 					{#each shown as member, index (member.id)}
 						<li>
@@ -143,13 +148,14 @@
 								type="button"
 								role="option"
 								aria-selected={index === current}
+								class="flex w-full items-baseline justify-between gap-2 rounded px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
 								onmousedown={(event) => event.preventDefault()}
 								onmouseenter={() => (active = index)}
 								onclick={() => choose(member)}
 							>
 								<span>{member.displayName}</span>
 								{#if member.username.toLowerCase() !== member.displayName.toLowerCase()}
-									<span class="meta">@{member.username}</span>
+									<span class="font-mono text-sm text-gray-500">@{member.username}</span>
 								{/if}
 							</button>
 						</li>

@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { Button, Card, Heading, Input, P, Select } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
 	import Field from '#lib/Field.svelte';
-	import Notice from '#lib/Notice.svelte';
 	import MemberPick from '#lib/MemberPick.svelte';
+	import Notice from '#lib/Notice.svelte';
+	import NumberInput from '#lib/NumberInput.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Escalation, EscalationRole } from '#lib/types';
 
@@ -20,6 +23,12 @@
 	let reason = $state('');
 	let notice = $state('');
 	let busy = $state(false);
+
+	const tiers = [
+		{ value: 'mod', name: 'Mod' },
+		{ value: 'admin', name: 'Admin' }
+	];
+	let grantRoles = $derived(allow.map((role) => ({ value: role.roleId, name: roleName(role.roleId) })));
 
 	function addRole() {
 		if (!roleId) return;
@@ -82,72 +91,72 @@
 </script>
 
 <svelte:head><title>Admin Firecall Access · SquirrelBot</title></svelte:head>
-<p class="kicker">Staff</p>
-<h1>Admin Firecall Access</h1>
-<p class="sub">This feature allows admins to grant temporary privilege escalation from one role to another for a given block of time.</p>
+<PageIntro kicker="Staff" title="Admin Firecall Access">
+	<P>This feature allows admins to grant temporary privilege escalation from one role to another for a given block of time.</P>
+</PageIntro>
 
-<section class="panel">
-	<h2>Allowlist</h2>
-	<div class="split">
+<section>
+<Card size="xl" class="mb-6 flex-col gap-4 p-5">
+	<Heading tag="h2" class="font-display text-xl font-semibold">Allowlist</Heading>
+	<div class="grid gap-4 md:grid-cols-2">
 		<Field label="Role"><RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} /></Field>
 		<Field label="Tier">
-			<select bind:value={tier}><option value="mod">Mod</option><option value="admin">Admin</option></select>
+			<Select items={tiers} bind:value={tier} placeholder="" />
 		</Field>
 	</div>
 	<Field label="Longest grant, in hours" hint="From 1 hour to 720 hours (30 days).">
-		<input type="number" min="1" max="720" bind:value={hours} />
+		<NumberInput min={1} max={720} bind:value={hours} />
 	</Field>
-	<div class="actions">
-		<button class="quiet" type="button" onclick={addRole}>Add role</button>
-		<button type="button" disabled={busy} onclick={saveAllow}>Save allowlist</button>
+	<div class="flex flex-wrap items-center gap-3">
+		<Button color="alternative" type="button" onclick={addRole}>Add role</Button>
+		<Button type="button" disabled={busy} onclick={saveAllow}>Save allowlist</Button>
 	</div>
-	<div class="list">
+	<div class="list grid gap-3">
 		{#each allow as role (role.roleId)}
-			<div class="item">
-				<header>
+			<Card size="xl" class="flex-col gap-2 p-4">
+				<header class="flex items-baseline justify-between gap-3">
 					<strong>{roleName(role.roleId)}</strong>
-					<span class="meta">{role.tier} · {Math.round(role.maxDurationSeconds / 3600)}h max</span>
+					<span class="font-mono text-sm text-gray-500">{role.tier} · {Math.round(role.maxDurationSeconds / 3600)}h max</span>
 				</header>
-				<button class="quiet" type="button" onclick={() => (allow = allow.filter((item) => item.roleId !== role.roleId))}>Remove</button>
-			</div>
+				<Button color="alternative" size="sm" type="button" onclick={() => (allow = allow.filter((item) => item.roleId !== role.roleId))}>Remove</Button>
+			</Card>
 		{:else}
-			<p class="hint">No roles yet. A grant from Discord will fail until you add one.</p>
+			<P class="text-sm">No roles yet. A grant from Discord will fail until you add one.</P>
 		{/each}
 	</div>
+</Card>
 </section>
 
-<form class="panel" onsubmit={(event) => { event.preventDefault(); grant(); }}>
-	<h2>Grant</h2>
-	<MemberPick guildId={data.bundle.guild.id} bind:userId bind:userName />
-	<Field label="Role">
-		<select bind:value={grantRole}>
-			{#each allow as role (role.roleId)}
-				<option value={role.roleId}>{roleName(role.roleId)}</option>
-			{/each}
-		</select>
-	</Field>
-	<Field label="Duration" hint="Examples: 4h, 2d, 1w."><input bind:value={duration} required /></Field>
-	<Field label="Reason"><input bind:value={reason} required maxlength="400" /></Field>
-	<div class="actions">
-		<button type="submit" disabled={busy}>Grant role</button>
-		<Notice text={notice} />
-	</div>
-</form>
+<Card size="xl" class="mb-6 flex-col p-5">
+	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); grant(); }}>
+		<Heading tag="h2" class="font-display text-xl font-semibold">Grant</Heading>
+		<MemberPick guildId={data.bundle.guild.id} bind:userId bind:userName />
+		<Field label="Role">
+			<Select placeholder="" bind:value={grantRole} items={grantRoles} />
+		</Field>
+		<Field label="Duration" hint="Examples: 4h, 2d, 1w."><Input bind:value={duration} required /></Field>
+		<Field label="Reason"><Input bind:value={reason} required maxlength={400} /></Field>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Grant role</Button>
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
 
-<section class="list">
+<section class="list grid gap-3">
 	{#each data.escalations as item (item.id)}
-		<article class="item">
-			<header>
+		<Card size="xl" class="flex-col gap-2 p-4">
+			<header class="flex items-baseline justify-between gap-3">
 				<strong>{item.userName || item.userId}</strong>
-				<span class="meta">{item.status} · {item.tier}</span>
+				<span class="font-mono text-sm text-gray-500">{item.status} · {item.tier}</span>
 			</header>
-			<p>{roleName(item.roleId)} until {when(item.expiresAt)}</p>
-			<p class="meta">{item.reason} · {item.grantedByName}</p>
+			<P>{roleName(item.roleId)} until {when(item.expiresAt)}</P>
+			<P class="font-mono text-sm">{item.reason} · {item.grantedByName}</P>
 			{#if item.status === 'active'}
-				<button class="danger" type="button" onclick={() => revoke(item.id)}>End now</button>
+				<Button color="red" size="sm" type="button" onclick={() => revoke(item.id)}>End now</Button>
 			{/if}
-		</article>
+		</Card>
 	{:else}
-		<p class="hint">No grants yet.</p>
+		<P class="text-sm">No grants yet.</P>
 	{/each}
 </section>

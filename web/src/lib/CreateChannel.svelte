@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { refreshAll } from '$app/navigation';
+	import { Button, Input, Label } from 'flowbite-svelte';
 	import { sendJSON } from '#lib/api';
 	import Notice from '#lib/Notice.svelte';
 	import type { Channel } from '#lib/types';
@@ -56,20 +57,20 @@
 	}
 </script>
 
-<div class="field">
-	<label for={inputId}>{fieldLabel}</label>
-	<div class="actions">
-		<input
+<div class="grid gap-1.5">
+	<Label for={inputId}>{fieldLabel}</Label>
+	<div class="flex flex-wrap items-center gap-2">
+		<Input
 			id={inputId}
-			class="channel-name"
+			class="w-48"
 			bind:value={channelName}
-			maxlength="100"
+			maxlength={100}
 			placeholder={kind === 'category' ? 'Category name' : 'Channel name'}
 			disabled={busy}
 		/>
-		<button class="quiet" type="button" disabled={busy} onclick={create}>
+		<Button color="alternative" type="button" disabled={busy} onclick={create}>
 			{kind === 'category' ? 'Create category' : 'Create channel'}
-		</button>
+		</Button>
 	</div>
 	<Notice text={notice} />
 </div>

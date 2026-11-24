@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import type { Snippet } from 'svelte';
 	import type { Bundle } from '#lib/types';
 
@@ -8,30 +9,47 @@
 	let id = $derived(data.bundle.guild.id);
 	let path = $derived(page.url.pathname.replace(/\/$/, ''));
 
-	function current(href: string): 'page' | undefined {
-		return path === href.replace(/\/$/, '') ? 'page' : undefined;
+	const sections = [
+		['', 'Overview'],
+		['/access', 'Dashboard access'],
+		['/profile', 'Profile'],
+		['/announcements', 'Announcements'],
+		['/escalations', 'Admin Firecall Access'],
+		['/verification', 'Server Application'],
+		['/cases', 'Cases'],
+		['/automod', 'Automod'],
+		['/logging', 'Logging'],
+		['/welcome', 'Welcome'],
+		['/reactions', 'Reaction Roles'],
+		['/starboard', 'Starboard'],
+		['/confessions', 'Confessions'],
+		['/tickets', 'Support tickets'],
+		['/commands', 'Commands']
+	] as const;
+
+	function href(suffix: string): string {
+		return `/app/${id}${suffix}`;
 	}
 </script>
 
-<div class="workspace">
-	<nav class="nav" aria-label="Server sections">
-		<a href={`/app/${id}`} aria-current={current(`/app/${id}`)}>Overview</a>
-		<a href={`/app/${id}/access`} aria-current={current(`/app/${id}/access`)}>Dashboard access</a>
-		<a href={`/app/${id}/profile`} aria-current={current(`/app/${id}/profile`)}>Profile</a>
-		<a href={`/app/${id}/announcements`} aria-current={current(`/app/${id}/announcements`)}>Announcements</a>
-		<a href={`/app/${id}/escalations`} aria-current={current(`/app/${id}/escalations`)}>Admin Firecall Access</a>
-		<a href={`/app/${id}/verification`} aria-current={current(`/app/${id}/verification`)}>Server Application</a>
-		<a href={`/app/${id}/cases`} aria-current={current(`/app/${id}/cases`)}>Cases</a>
-		<a href={`/app/${id}/automod`} aria-current={current(`/app/${id}/automod`)}>Automod</a>
-		<a href={`/app/${id}/logging`} aria-current={current(`/app/${id}/logging`)}>Logging</a>
-		<a href={`/app/${id}/welcome`} aria-current={current(`/app/${id}/welcome`)}>Welcome</a>
-		<a href={`/app/${id}/reactions`} aria-current={current(`/app/${id}/reactions`)}>Reaction Roles</a>
-		<a href={`/app/${id}/starboard`} aria-current={current(`/app/${id}/starboard`)}>Starboard</a>
-		<a href={`/app/${id}/confessions`} aria-current={current(`/app/${id}/confessions`)}>Confessions</a>
-		<a href={`/app/${id}/tickets`} aria-current={current(`/app/${id}/tickets`)}>Support tickets</a>
-		<a href={`/app/${id}/commands`} aria-current={current(`/app/${id}/commands`)}>Commands</a>
-	</nav>
-	<main id="main" class="main" tabindex="-1">
+<div class="flex min-h-[calc(100vh-4.5rem)] flex-col md:flex-row">
+	<Sidebar
+		alwaysOpen
+		position="static"
+		backdrop={false}
+		activateClickOutside={false}
+		ariaLabel="Server menu"
+		class="h-auto w-full border-e border-gray-200 md:w-56 dark:border-gray-700"
+	>
+		<nav aria-label="Server sections">
+			<SidebarGroup>
+				{#each sections as [suffix, label] (suffix)}
+					<SidebarItem href={href(suffix)} {label} spanClass="" active={path === href(suffix)} />
+				{/each}
+			</SidebarGroup>
+		</nav>
+	</Sidebar>
+	<main id="main" class="min-w-0 max-w-4xl flex-1 px-6 py-6" tabindex="-1">
 		{#key id}
 			{@render children()}
 		{/key}

@@ -4,6 +4,29 @@
 @import '@fontsource/figtree/500.css';
 @import '@fontsource/figtree/600.css';
 @import '@fontsource/ibm-plex-mono/400.css';
+@import 'tailwindcss';
+
+@plugin 'flowbite/plugin';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	--font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Familjen Grotesk', ui-sans-serif, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+	--color-primary-50: #fbf6f0;
+	--color-primary-100: #f6eadc;
+	--color-primary-200: #ecd3b6;
+	--color-primary-300: #e0b488;
+	--color-primary-400: #d08a4a;
+	--color-primary-500: #b86f32;
+	--color-primary-600: #96561f;
+	--color-primary-700: #7a4518;
+	--color-primary-800: #5e3414;
+	--color-primary-900: #3f230e;
+}
+
+@source '../node_modules/flowbite-svelte/dist';
 
 :root {
 	--night: #141821;
@@ -67,6 +90,7 @@
 	}
 }
 
+@layer components {
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
@@ -336,4 +360,5 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) {
 	* { scroll-behavior: auto !important; transition: none !important; }
+}
 }

@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { Button, Card, Input, P, Textarea } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import Field from '#lib/Field.svelte';
 	import Notice from '#lib/Notice.svelte';
+	import PageIntro from '#lib/PageIntro.svelte';
 	import RoleSelect from '#lib/RoleSelect.svelte';
 	import type { Bundle, Guild } from '#lib/types';
 
@@ -35,23 +37,25 @@
 </script>
 
 <svelte:head><title>Welcome · SquirrelBot</title></svelte:head>
-<p class="kicker">Arrival</p>
-<h1>Welcome</h1>
-<p class="sub">The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</p>
-<form class="panel" onsubmit={(event) => { event.preventDefault(); save(); }}>
-	<div class="split">
-		<Field label="Mod role"><RoleSelect roles={data.bundle.roles} bind:value={guild.modRoleId} /></Field>
-		<Field label="Admin role"><RoleSelect roles={data.bundle.roles} bind:value={guild.adminRoleId} /></Field>
-	</div>
-	<Field label="Mod log channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.modLogChannelId} /></Field>
-	<Field label="Welcome channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.welcomeChannelId} /></Field>
-	<Field label="Welcome message"><textarea bind:value={guild.welcomeMessage} maxlength="1500"></textarea></Field>
-	<Field label="Auto role" hint="Given on join.">
-		<RoleSelect roles={data.bundle.roles} bind:value={guild.autoroleId} />
-	</Field>
-	<Field label="Custom command prefix"><input bind:value={guild.prefix} maxlength="5" required /></Field>
-	<div class="actions">
-		<button type="submit" disabled={busy}>Save welcome</button>
-		<Notice text={notice} />
-	</div>
-</form>
+<PageIntro kicker="Arrival" title="Welcome">
+	<P>The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</P>
+</PageIntro>
+<Card size="xl" class="flex-col p-5">
+	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<div class="grid gap-4 md:grid-cols-2">
+			<Field label="Mod role"><RoleSelect roles={data.bundle.roles} bind:value={guild.modRoleId} /></Field>
+			<Field label="Admin role"><RoleSelect roles={data.bundle.roles} bind:value={guild.adminRoleId} /></Field>
+		</div>
+		<Field label="Mod log channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.modLogChannelId} /></Field>
+		<Field label="Welcome channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.welcomeChannelId} /></Field>
+		<Field label="Welcome message"><Textarea bind:value={guild.welcomeMessage} maxlength={1500} rows={6} /></Field>
+		<Field label="Auto role" hint="Given on join.">
+			<RoleSelect roles={data.bundle.roles} bind:value={guild.autoroleId} />
+		</Field>
+		<Field label="Custom command prefix"><Input bind:value={guild.prefix} maxlength={5} required /></Field>
+		<div class="flex flex-wrap items-center gap-3">
+			<Button type="submit" disabled={busy}>Save welcome</Button>
+			<Notice text={notice} />
+		</div>
+	</form>
+</Card>
