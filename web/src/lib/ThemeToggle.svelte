@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Moon from '@lucide/svelte/icons/moon';
+	import Sun from '@lucide/svelte/icons/sun';
 	import { Button } from 'flowbite-svelte';
 	import { onMount } from 'svelte';
 
@@ -39,4 +41,15 @@
 	});
 </script>
 
-<Button color="alternative" type="button" aria-pressed={dark} onclick={toggle}>Dark mode</Button>
+<Button
+	color="alternative"
+	aria-pressed={dark}
+	aria-label={dark ? 'Use light mode' : 'Use dark mode'}
+	onclick={toggle}
+>
+	{#if dark}
+		<Sun size={20} aria-hidden="true" />
+	{:else}
+		<Moon size={20} aria-hidden="true" />
+	{/if}
+</Button>
