@@ -24,10 +24,12 @@
 				adminRoleId: guild.adminRoleId,
 				welcomeChannelId: guild.welcomeChannelId,
 				welcomeMessage: guild.welcomeMessage,
+				leaveChannelId: guild.leaveChannelId,
+				leaveMessage: guild.leaveMessage,
 				autoroleId: guild.autoroleId,
 				prefix: guild.prefix
 			});
-			notice = 'Saved. Welcome message updated.';
+			notice = 'Saved. Welcome and leave messages updated.';
 		} catch (err) {
 			notice = err instanceof Error ? err.message : 'Could not save.';
 		} finally {
@@ -38,7 +40,7 @@
 
 <svelte:head><title>Welcome · SquirrelBot</title></svelte:head>
 <PageIntro kicker="Arrival" title="Welcome">
-	<P>The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome message: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</P>
+	<P>The mod and admin roles can use staff commands even when their Discord permissions are narrower. Add a role under Dashboard access when those people should open this dashboard too. Placeholders in the welcome and leave messages: {'{user}'} {'{username}'} {'{server}'} {'{membercount}'}.</P>
 </PageIntro>
 <Card size="xl" class="flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
@@ -49,6 +51,10 @@
 		<Field label="Mod log channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.modLogChannelId} /></Field>
 		<Field label="Welcome channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.welcomeChannelId} /></Field>
 		<Field label="Welcome message"><Textarea bind:value={guild.welcomeMessage} maxlength={1500} rows={6} /></Field>
+		<Field label="Leave channel"><ChannelSelect channels={data.bundle.channels} bind:value={guild.leaveChannelId} /></Field>
+		<Field label="Leave message" hint="Sent when a member leaves. Empty sends nothing.">
+			<Textarea bind:value={guild.leaveMessage} maxlength={1500} rows={4} />
+		</Field>
 		<Field label="Auto role" hint="Given on join.">
 			<RoleSelect roles={data.bundle.roles} bind:value={guild.autoroleId} />
 		</Field>

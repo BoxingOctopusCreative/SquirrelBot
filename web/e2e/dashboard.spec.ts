@@ -114,12 +114,15 @@ test.describe('dashboard', () => {
 		await page.getByLabel('Admin role').selectOption({ label: 'Admins' });
 		await page.getByLabel('Welcome channel').selectOption({ label: '#general' });
 		await page.getByLabel('Welcome message').fill('Hello {user}');
+		await page.getByLabel('Leave channel').selectOption({ label: '#announcements' });
+		await page.getByLabel('Leave message').fill('Goodbye {username}');
 		await page.getByLabel('Custom command prefix').fill('?');
 		await page.getByRole('button', { name: 'Save Welcome' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
 		await page.reload();
 		await expect(page.getByLabel('Custom command prefix')).toHaveValue('?');
 		await expect(page.getByLabel('Welcome message')).toHaveValue('Hello {user}');
+		await expect(page.getByLabel('Leave message')).toHaveValue('Goodbye {username}');
 	});
 
 	test('saves automod', async ({ page }) => {

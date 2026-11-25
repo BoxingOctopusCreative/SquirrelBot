@@ -4,7 +4,7 @@ SquirrelBot is a Discord moderation bot with a Go API and a SvelteKit admin dash
 
 ## What it does
 
-Moderation follows the usual staff tools: warn, kick, ban, timeout, case history, purge, and slowmode. Automod can delete invites, repeated messages, mention piles, walls of caps, and blocked words. The bot also logs message and member events, posts a welcome message, assigns an auto role, and answers prefix commands. A prefix command can be a Lua script: it can reply, fill a Liquid string, react, delete the invoking message, and add or remove roles an admin allowed for that command.
+Moderation follows the usual staff tools: warn, kick, ban, timeout, case history, purge, and slowmode. Automod can delete invites, repeated messages, mention piles, walls of caps, and blocked words. The bot also logs message and member events, posts welcome and leave messages, assigns an auto role, and answers prefix commands. A prefix command can be a Lua script: it can reply, fill a Liquid string, react, delete the invoking message, and add or remove roles an admin allowed for that command.
 
 Each server can give the bot its own display name and avatar. Members of that server see them in place of the application name and picture. The username stays the same on every server.
 

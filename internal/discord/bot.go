@@ -120,6 +120,11 @@ func (b *Bot) HandleMessage(m *discordgo.MessageCreate) {
 	b.onMessage(b.session, m)
 }
 
+// HandleMemberRemove runs the leave message and member-leave log for one departure.
+func (b *Bot) HandleMemberRemove(event *discordgo.GuildMemberRemove) {
+	b.onLeave(b.session, event)
+}
+
 func (b *Bot) registerCommands(s *discordgo.Session, appID string) error {
 	body, err := commandPayload()
 	if err != nil {

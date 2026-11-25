@@ -158,6 +158,30 @@ func TestBotMessagesUseTheDiscordMock(t *testing.T) {
 	})
 }
 
+func TestLeaveMessage(t *testing.T) {
+	status, body := call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	guild := asMap(t, body)["guild"].(map[string]any)
+	guild["leaveChannelId"] = harness.GeneralChannelID
+	guild["leaveMessage"] = "Goodbye {username}"
+	status, body = call(t, http.MethodPatch, "/api/guilds/"+harness.GuildID, guild, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
+	const userID = "444444444444444454"
+	stack.Bot.HandleMemberRemove(&discordgo.GuildMemberRemove{
+		Member: &discordgo.Member{
+			GuildID: harness.GuildID,
+			User:    &discordgo.User{ID: userID, Username: "hazel"},
+		},
+	})
+	for _, message := range stack.Discord.Messages(harness.GeneralChannelID) {
+		if message.Content == "Goodbye hazel" {
+			return
+		}
+	}
+	t.Fatal("leave message was not posted")
+}
+
 func setPrefix(t *testing.T, prefix string) {
 	t.Helper()
 	status, body := call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.Cookie)

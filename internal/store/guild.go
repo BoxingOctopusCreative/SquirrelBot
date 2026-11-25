@@ -33,6 +33,8 @@ type Guild struct {
 	AdminRoleID       string    `json:"adminRoleId"`
 	WelcomeChannelID  string    `json:"welcomeChannelId"`
 	WelcomeMessage    string    `json:"welcomeMessage"`
+	LeaveChannelID    string    `json:"leaveChannelId"`
+	LeaveMessage      string    `json:"leaveMessage"`
 	AutoroleID        string    `json:"autoroleId"`
 	Prefix            string    `json:"prefix"`
 	ReactionChannelID string    `json:"reactionChannelId"`
@@ -55,11 +57,11 @@ func (s *Store) GetGuild(ctx context.Context, id string) (Guild, error) {
 	var g Guild
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, name, icon, mod_log_channel_id, mod_role_id, admin_role_id,
-		       welcome_channel_id, welcome_message, autorole_id, prefix,
-		       reaction_channel_id, reaction_message_id, updated_at
+		       welcome_channel_id, welcome_message, leave_channel_id, leave_message,
+		       autorole_id, prefix, reaction_channel_id, reaction_message_id, updated_at
 		FROM guilds WHERE id = $1`, id).Scan(
 		&g.ID, &g.Name, &g.Icon, &g.ModLogChannelID, &g.ModRoleID, &g.AdminRoleID,
-		&g.WelcomeChannelID, &g.WelcomeMessage, &g.AutoroleID, &g.Prefix,
+		&g.WelcomeChannelID, &g.WelcomeMessage, &g.LeaveChannelID, &g.LeaveMessage, &g.AutoroleID, &g.Prefix,
 		&g.ReactionChannelID, &g.ReactionMessageID, &g.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -102,12 +104,14 @@ func (s *Store) UpdateGuildSettings(ctx context.Context, g Guild) error {
 			admin_role_id = $4,
 			welcome_channel_id = $5,
 			welcome_message = $6,
-			autorole_id = $7,
-			prefix = $8,
+			leave_channel_id = $7,
+			leave_message = $8,
+			autorole_id = $9,
+			prefix = $10,
 			updated_at = now()
 		WHERE id = $1`,
 		g.ID, g.ModLogChannelID, g.ModRoleID, g.AdminRoleID,
-		g.WelcomeChannelID, g.WelcomeMessage, g.AutoroleID, g.Prefix,
+		g.WelcomeChannelID, g.WelcomeMessage, g.LeaveChannelID, g.LeaveMessage, g.AutoroleID, g.Prefix,
 	)
 	if err != nil {
 		return err

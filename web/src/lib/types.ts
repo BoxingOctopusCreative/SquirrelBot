@@ -19,6 +19,8 @@ export type Guild = {
 	adminRoleId: string;
 	welcomeChannelId: string;
 	welcomeMessage: string;
+	leaveChannelId: string;
+	leaveMessage: string;
 	autoroleId: string;
 	prefix: string;
 	reactionChannelId: string;

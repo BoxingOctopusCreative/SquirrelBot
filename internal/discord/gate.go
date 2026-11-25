@@ -355,20 +355,44 @@ func (b *Bot) onLeave(s *discordgo.Session, event *discordgo.GuildMemberRemove) 
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	_ = b.store.SetGateStatus(ctx, event.GuildID, event.User.ID, "left")
+	guild, gerr := b.touchGuild(ctx, event.GuildID)
+	if gerr != nil {
+		b.log.Error("leave guild", "guild", event.GuildID, "err", gerr)
+	} else {
+		b.postLeave(s, guild, event)
+	}
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
 	if err != nil || !logs.MemberLeave {
 		return
 	}
 	channel := logs.ChannelID
-	if channel == "" {
-		if guild, gerr := b.store.GetGuild(ctx, event.GuildID); gerr == nil {
-			channel = guild.ModLogChannelID
-		}
+	if channel == "" && gerr == nil {
+		channel = guild.ModLogChannelID
 	}
 	b.sendLog(channel, &discordgo.MessageEmbed{
 		Title:       "Member left",
 		Description: fmt.Sprintf("<@%s> · %s", event.User.ID, event.User.Username),
 		Color:       colorMist,
+	})
+}
+
+func (b *Bot) postLeave(s *discordgo.Session, guild store.Guild, event *discordgo.GuildMemberRemove) {
+	if event.User.Bot || guild.LeaveChannelID == "" || guild.LeaveMessage == "" {
+		return
+	}
+	count := 0
+	if g, err := s.Guild(event.GuildID); err == nil {
+		count = g.MemberCount
+	}
+	content := domain.ApplyTemplate(guild.LeaveMessage, map[string]string{
+		"user":        "<@" + event.User.ID + ">",
+		"username":    event.User.Username,
+		"server":      b.guildName(event.GuildID),
+		"membercount": fmt.Sprintf("%d", count),
+	})
+	_, _ = s.ChannelMessageSendComplex(guild.LeaveChannelID, &discordgo.MessageSend{
+		Content:         content,
+		AllowedMentions: &discordgo.MessageAllowedMentions{Users: []string{event.User.ID}},
 	})
 }
 
