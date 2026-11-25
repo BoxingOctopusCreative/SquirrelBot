@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -100,13 +101,14 @@ func (b *Bot) ticketModal(s *discordgo.Session, i *discordgo.InteractionCreate) 
 		_ = respondEphemeral(s, i, "That form is not a ticket.")
 		return
 	}
+	values := modalValues(i.ModalSubmitData())
 	switch action {
 	case "form":
-		b.submitTicket(s, i)
+		b.submitTicket(s, i, values)
 	case "close-form":
-		b.submitCloseTicket(s, i, id)
+		b.submitCloseTicket(s, i, id, values)
 	case "delete-form":
-		b.submitDeleteTicket(s, i, id)
+		b.submitDeleteTicket(s, i, id, values)
 	default:
 		_ = respondEphemeral(s, i, "That form is not a ticket.")
 	}
@@ -145,13 +147,12 @@ func (b *Bot) openTicketForm(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 }
 
-func (b *Bot) submitTicket(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *Bot) submitTicket(s *discordgo.Session, i *discordgo.InteractionCreate, values map[string]string) {
 	userID, name, ok := ticketMember(i)
 	if !ok {
 		_ = respondEphemeral(s, i, "Use this form in a server.")
 		return
 	}
-	values := modalValues(i.ModalSubmitData())
 	subject, err := domain.CleanTicketField(values["subject"], domain.MaxTicketSubject, "Write a subject.", true)
 	if err != nil {
 		_ = respondEphemeral(s, i, err.Error())
@@ -329,11 +330,9 @@ func (b *Bot) promptCloseTicket(s *discordgo.Session, i *discordgo.InteractionCr
 			CustomID: domain.TicketCustomID("close-form", id),
 			Title:    clipModalTitle(fmt.Sprintf("Close ticket %d", item.Number)),
 			Components: []discordgo.MessageComponent{
-				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-					discordgo.TextInput{
-						CustomID: "reason", Label: "Reason", Style: discordgo.TextInputShort,
-						Placeholder: "What was the outcome?", Required: true, MinLength: 1, MaxLength: domain.MaxTicketReason,
-					},
+				modalLabel{Label: "Reason", Component: modalText{
+					CustomID: "reason", Style: discordgo.TextInputShort,
+					Placeholder: "What was the outcome?", Required: true, MinLength: 1, MaxLength: domain.MaxTicketReason,
 				}},
 			},
 		},
@@ -343,13 +342,13 @@ func (b *Bot) promptCloseTicket(s *discordgo.Session, i *discordgo.InteractionCr
 	}
 }
 
-func (b *Bot) submitCloseTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64) {
+func (b *Bot) submitCloseTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64, values map[string]string) {
 	userID, name, ok := ticketMember(i)
 	if !ok {
 		_ = respondEphemeral(s, i, "Use this form in a server.")
 		return
 	}
-	reason, err := domain.CleanTicketField(modalValues(i.ModalSubmitData())["reason"], domain.MaxTicketReason, "Write a reason. It is saved with the transcript.", true)
+	reason, err := domain.CleanTicketField(values["reason"], domain.MaxTicketReason, "Write a reason. It is saved with the transcript.", true)
 	if err != nil {
 		_ = respondEphemeral(s, i, err.Error())
 		return
@@ -477,7 +476,7 @@ func (b *Bot) finishClosedTicket(ctx context.Context, guildID string, id int64, 
 	return true, nil
 }
 
-func (b *Bot) submitDeleteTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64) {
+func (b *Bot) submitDeleteTicket(s *discordgo.Session, i *discordgo.InteractionCreate, id int64, values map[string]string) {
 	if _, _, ok := ticketMember(i); !ok {
 		_ = respondEphemeral(s, i, "Use this form in a server.")
 		return
@@ -504,7 +503,7 @@ func (b *Bot) submitDeleteTicket(s *discordgo.Session, i *discordgo.InteractionC
 		editReply(s, i, "That ticket channel was already deleted.")
 		return
 	}
-	typed := modalValues(i.ModalSubmitData())["number"]
+	typed := values["number"]
 	if !domain.TicketNumberMatches(typed, item.Number) {
 		editReply(s, i, fmt.Sprintf("Type %d to delete this ticket. The channel is still there.", item.Number))
 		return
@@ -905,26 +904,171 @@ func ticketOpenModal() *discordgo.InteractionResponse {
 	return &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: domain.TicketCustomID("form", 0),
-			Title:    "Open a ticket",
-			Components: []discordgo.MessageComponent{
-				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-					discordgo.TextInput{
-						CustomID: "subject", Label: "Subject", Style: discordgo.TextInputShort,
-						Placeholder: "Billing, a bug, a question", Required: true,
-						MinLength: 1, MaxLength: domain.MaxTicketSubject,
-					},
-				}},
-				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-					discordgo.TextInput{
-						CustomID: "details", Label: "What do you need help with?", Style: discordgo.TextInputParagraph,
-						Placeholder: "What happened, and what you already tried", Required: true,
-						MinLength: 1, MaxLength: domain.MaxTicketBody,
-					},
-				}},
-			},
+			CustomID:   domain.TicketCustomID("form", 0),
+			Title:      "Open a ticket",
+			Components: ticketOpenFields(),
 		},
 	}
+}
+
+func ticketOpenFields() []discordgo.MessageComponent {
+	return []discordgo.MessageComponent{
+		modalLabel{Label: "Subject", Component: modalText{
+			CustomID: "subject", Style: discordgo.TextInputShort,
+			Placeholder: "Billing, a bug, a question", Required: true,
+			MinLength: 1, MaxLength: domain.MaxTicketSubject,
+		}},
+		modalLabel{Label: "What do you need help with?", Component: modalText{
+			CustomID: "details", Style: discordgo.TextInputParagraph,
+			Placeholder: "What happened, and what you already tried", Required: true,
+			MinLength: 1, MaxLength: domain.MaxTicketBody,
+		}},
+	}
+}
+
+type modalText struct {
+	CustomID    string
+	Style       discordgo.TextInputStyle
+	Placeholder string
+	MinLength   int
+	MaxLength   int
+	Required    bool
+}
+
+func (modalText) Type() discordgo.ComponentType { return discordgo.TextInputComponent }
+
+func (m modalText) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Type        int    `json:"type"`
+		CustomID    string `json:"custom_id"`
+		Style       int    `json:"style"`
+		Placeholder string `json:"placeholder,omitempty"`
+		Required    bool   `json:"required"`
+		MinLength   int    `json:"min_length,omitempty"`
+		MaxLength   int    `json:"max_length,omitempty"`
+	}{
+		Type:        int(discordgo.TextInputComponent),
+		CustomID:    m.CustomID,
+		Style:       int(m.Style),
+		Placeholder: m.Placeholder,
+		Required:    m.Required,
+		MinLength:   m.MinLength,
+		MaxLength:   m.MaxLength,
+	})
+}
+
+func (b *Bot) submitTicketFromGateway(s *discordgo.Session, interaction *discordgo.Interaction, customID string, values map[string]string) {
+	i := &discordgo.InteractionCreate{Interaction: interaction}
+	action, id, ok := domain.ParseTicketAction(customID)
+	if !ok {
+		_ = respondEphemeral(s, i, "That form is not a ticket.")
+		return
+	}
+	switch action {
+	case "form":
+		b.submitTicket(s, i, values)
+	case "close-form":
+		b.submitCloseTicket(s, i, id, values)
+	case "delete-form":
+		b.submitDeleteTicket(s, i, id, values)
+	default:
+		_ = respondEphemeral(s, i, "That form is not a ticket.")
+	}
+}
+
+func ticketFormFromEvent(raw []byte) (*discordgo.Interaction, string, map[string]string, bool) {
+	var payload struct {
+		ID        string                    `json:"id"`
+		AppID     string                    `json:"application_id"`
+		Type      discordgo.InteractionType `json:"type"`
+		GuildID   string                    `json:"guild_id"`
+		ChannelID string                    `json:"channel_id"`
+		Token     string                    `json:"token"`
+		Member    *discordgo.Member         `json:"member"`
+		User      *discordgo.User           `json:"user"`
+		Data      struct {
+			CustomID   string          `json:"custom_id"`
+			Components json.RawMessage `json:"components"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, "", nil, false
+	}
+	if payload.Type != discordgo.InteractionModalSubmit || !strings.HasPrefix(payload.Data.CustomID, "sb:ticket:") {
+		return nil, "", nil, false
+	}
+	if !componentTreeHasType(payload.Data.Components, 18) {
+		return nil, "", nil, false
+	}
+	values := map[string]string{}
+	collectModalText(payload.Data.Components, values)
+	return &discordgo.Interaction{
+		ID:        payload.ID,
+		AppID:     payload.AppID,
+		Type:      payload.Type,
+		GuildID:   payload.GuildID,
+		ChannelID: payload.ChannelID,
+		Token:     payload.Token,
+		Member:    payload.Member,
+		User:      payload.User,
+	}, payload.Data.CustomID, values, true
+}
+
+func componentTreeHasType(raw json.RawMessage, want int) bool {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false
+	}
+	if raw[0] == '[' {
+		var items []json.RawMessage
+		if json.Unmarshal(raw, &items) != nil {
+			return false
+		}
+		for _, item := range items {
+			if componentTreeHasType(item, want) {
+				return true
+			}
+		}
+		return false
+	}
+	var part struct {
+		Type       int             `json:"type"`
+		Component  json.RawMessage `json:"component"`
+		Components json.RawMessage `json:"components"`
+	}
+	if json.Unmarshal(raw, &part) != nil {
+		return false
+	}
+	return part.Type == want || componentTreeHasType(part.Component, want) || componentTreeHasType(part.Components, want)
+}
+
+func collectModalText(raw json.RawMessage, values map[string]string) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return
+	}
+	if raw[0] == '[' {
+		var items []json.RawMessage
+		if json.Unmarshal(raw, &items) != nil {
+			return
+		}
+		for _, item := range items {
+			collectModalText(item, values)
+		}
+		return
+	}
+	var part struct {
+		CustomID   string          `json:"custom_id"`
+		Value      *string         `json:"value"`
+		Component  json.RawMessage `json:"component"`
+		Components json.RawMessage `json:"components"`
+	}
+	if json.Unmarshal(raw, &part) != nil {
+		return
+	}
+	if part.CustomID != "" && part.Value != nil {
+		values[part.CustomID] = *part.Value
+	}
+	collectModalText(part.Component, values)
+	collectModalText(part.Components, values)
 }
 
 func ticketComponents(item store.Ticket) []discordgo.MessageComponent {

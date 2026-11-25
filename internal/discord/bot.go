@@ -115,6 +115,11 @@ func (b *Bot) HandleInteraction(i *discordgo.InteractionCreate) {
 	b.onInteraction(b.session, i)
 }
 
+// HandleGatewayEvent runs one raw gateway payload through the bot session.
+func (b *Bot) HandleGatewayEvent(event *discordgo.Event) {
+	b.onGatewayEvent(b.session, event)
+}
+
 // HandleMessage runs custom commands and automod for one message.
 func (b *Bot) HandleMessage(m *discordgo.MessageCreate) {
 	b.onMessage(b.session, m)
