@@ -173,7 +173,7 @@
 			</Field>
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>{schedule ? 'Schedule' : 'Send now'}</Button>
+			<Button type="submit" disabled={busy}>{schedule ? 'Schedule' : 'Send Now'}</Button>
 			<CreateChannel
 				guildId={data.bundle.guild.id}
 				purpose="announcements"
@@ -223,7 +223,7 @@
 		<Field label="Title"><Input bind:value={templateTitle} maxlength={256} required /></Field>
 		<Field label="Body"><Textarea bind:value={templateBody} maxlength={4000} required rows={6} /></Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={templateBusy}>{templateID === null ? 'Save template' : 'Update template'}</Button>
+			<Button type="submit" disabled={templateBusy}>{templateID === null ? 'Save Template' : 'Update Template'}</Button>
 			{#if templateID !== null}<Button color="alternative" type="button" onclick={clearTemplate}>Cancel</Button>{/if}
 			<Notice text={templateNotice} />
 		</div>
@@ -263,7 +263,7 @@
 			<P class="font-mono text-sm">{item.authorName} · {when(item.sentAt || item.scheduledAt || item.createdAt)}{item.error ? ` · ${item.error}` : ''}</P>
 			{#if item.status !== 'sent'}
 				<div class="flex flex-wrap gap-2">
-					<Button size="sm" type="button" onclick={() => sendNow(item.id)}>Send now</Button>
+					<Button size="sm" type="button" onclick={() => sendNow(item.id)}>Send Now</Button>
 					<Button color="red" size="sm" type="button" onclick={() => remove(item.id)}>Delete</Button>
 				</div>
 			{/if}

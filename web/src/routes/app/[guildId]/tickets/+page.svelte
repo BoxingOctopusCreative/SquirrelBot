@@ -62,8 +62,8 @@
 	}
 </script>
 
-<svelte:head><title>Support tickets · SquirrelBot</title></svelte:head>
-<PageIntro kicker="Help" title="Support tickets">
+<svelte:head><title>Support Tickets · SquirrelBot</title></svelte:head>
+<PageIntro kicker="Help" title="Support Tickets">
 	<P>
 		A member presses Open a ticket on the panel. A form asks for a subject and what they need. SquirrelBot opens a private channel for that member and the support role. Staff claim the ticket, then close it with a reason. Closing saves a transcript here, posts a copy in the transcript channel, and deletes the ticket channel ten seconds later. Reopen before then puts the ticket back.
 	</P>
@@ -129,8 +129,8 @@
 			<Textarea bind:value={cfg.panelBody} maxlength={800} required rows={6} />
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save tickets</Button>
-			<Button type="button" disabled={busy} onclick={postPanel}>Save and post the panel</Button>
+			<Button type="submit" disabled={busy}>Save Tickets</Button>
+			<Button type="button" disabled={busy} onclick={postPanel}>Save and Post the Panel</Button>
 			<Notice text={notice} />
 		</div>
 	</form>

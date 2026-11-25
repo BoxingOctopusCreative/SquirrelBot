@@ -70,8 +70,8 @@
 	}
 </script>
 
-<svelte:head><title>Server application · SquirrelBot</title></svelte:head>
-<PageIntro kicker="Application" title="Server application">
+<svelte:head><title>Server Application · SquirrelBot</title></svelte:head>
+<PageIntro kicker="Application" title="Server Application">
 	<P>New members get a deadline to answer the questions. The first question is always "What is your age?". An answer under 18 removes them immediately. Finishing the form clears the deadline.</P>
 </PageIntro>
 
@@ -93,7 +93,7 @@
 				</div>
 			{/each}
 			{#if questions.length < 4}
-				<Button color="alternative" type="button" onclick={addQuestion}>Add question</Button>
+				<Button color="alternative" type="button" onclick={addQuestion}>Add Question</Button>
 			{/if}
 		</fieldset>
 		<div class="grid gap-4 md:grid-cols-2">
@@ -112,7 +112,7 @@
 			{/each}
 		</fieldset>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save application</Button>
+			<Button type="submit" disabled={busy}>Save Application</Button>
 			<Notice text={notice} />
 		</div>
 	</form>
@@ -122,7 +122,7 @@
 	<Heading tag="h2" class="font-display text-xl font-semibold">Application message</Heading>
 	<P class="text-sm">Save first. Members press Answer questions and fill out the form. Posting in the same channel updates the current message.</P>
 	<Field label="Channel"><ChannelSelect channels={data.bundle.channels} bind:value={panelChannel} allowEmpty={false} /></Field>
-	<Button type="button" onclick={postPanel}>Post message</Button>
+	<Button type="button" onclick={postPanel}>Post Message</Button>
 </Card>
 
 <section class="grid gap-6">

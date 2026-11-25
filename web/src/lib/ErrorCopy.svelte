@@ -7,4 +7,4 @@
 <Heading tag="h1" class="mb-3 font-display text-3xl font-semibold">Something went wrong</Heading>
 <P>{message || 'This page did not load.'}</P>
 <P class="mt-2">Go back to your servers and try that page again.</P>
-<Button href="/app" class="mt-4">Back to servers</Button>
+<Button href="/app" class="mt-4">Back to Servers</Button>

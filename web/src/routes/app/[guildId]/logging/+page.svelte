@@ -41,7 +41,7 @@
 		<Checkbox bind:checked={logging.memberLeave}>Leaves</Checkbox>
 		<Checkbox bind:checked={logging.memberBan}>Bans</Checkbox>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save logging</Button>
+			<Button type="submit" disabled={busy}>Save Logging</Button>
 			<CreateChannel
 				guildId={data.bundle.guild.id}
 				purpose="logging"

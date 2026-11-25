@@ -69,7 +69,7 @@
 			disabled={busy}
 		/>
 		<Button color="alternative" type="button" disabled={busy} onclick={create}>
-			{kind === 'category' ? 'Create category' : 'Create channel'}
+			{kind === 'category' ? 'Create Category' : 'Create Channel'}
 		</Button>
 	</div>
 	<Notice text={notice} />

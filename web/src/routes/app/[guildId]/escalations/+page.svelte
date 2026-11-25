@@ -108,8 +108,8 @@
 		<NumberInput min={1} max={720} bind:value={hours} />
 	</Field>
 	<div class="flex flex-wrap items-center gap-3">
-		<Button color="alternative" type="button" onclick={addRole}>Add role</Button>
-		<Button type="button" disabled={busy} onclick={saveAllow}>Save allowlist</Button>
+		<Button color="alternative" type="button" onclick={addRole}>Add Role</Button>
+		<Button type="button" disabled={busy} onclick={saveAllow}>Save Allowlist</Button>
 	</div>
 	<div class="list grid gap-3">
 		{#each allow as role (role.roleId)}
@@ -137,7 +137,7 @@
 		<Field label="Duration" hint="Examples: 4h, 2d, 1w."><Input bind:value={duration} required /></Field>
 		<Field label="Reason"><Input bind:value={reason} required maxlength={400} /></Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Grant role</Button>
+			<Button type="submit" disabled={busy}>Grant Role</Button>
 			<Notice text={notice} />
 		</div>
 	</form>
@@ -153,7 +153,7 @@
 			<P>{roleName(item.roleId)} until {when(item.expiresAt)}</P>
 			<P class="font-mono text-sm">{item.reason} · {item.grantedByName}</P>
 			{#if item.status === 'active'}
-				<Button color="red" size="sm" type="button" onclick={() => revoke(item.id)}>End now</Button>
+				<Button color="red" size="sm" type="button" onclick={() => revoke(item.id)}>End Now</Button>
 			{/if}
 		</Card>
 	{:else}

@@ -44,7 +44,7 @@
 <Button
 	color="alternative"
 	aria-pressed={dark}
-	aria-label={dark ? 'Use light mode' : 'Use dark mode'}
+	aria-label={dark ? 'Use Light Mode' : 'Use Dark Mode'}
 	onclick={toggle}
 >
 	{#if dark}

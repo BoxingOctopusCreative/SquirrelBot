@@ -54,7 +54,7 @@
 		</Field>
 		<Field label="Custom command prefix"><Input bind:value={guild.prefix} maxlength={5} required /></Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save welcome</Button>
+			<Button type="submit" disabled={busy}>Save Welcome</Button>
 			<Notice text={notice} />
 		</div>
 	</form>

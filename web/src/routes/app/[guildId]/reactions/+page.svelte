@@ -81,8 +81,8 @@
 	}
 </script>
 
-<svelte:head><title>Reaction roles · SquirrelBot</title></svelte:head>
-<PageIntro kicker="Roles" title="Reaction roles">
+<svelte:head><title>Reaction Roles · SquirrelBot</title></svelte:head>
+<PageIntro kicker="Roles" title="Reaction Roles">
 	<P>
 		Pick the channel where members choose roles. Click a reaction to get the role. Remove the reaction to drop it.
 		For a custom emoji, use name:id. SquirrelBot posts the message.
@@ -98,7 +98,7 @@
 			<RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} />
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Add reaction role</Button>
+			<Button type="submit" disabled={busy}>Add Reaction Role</Button>
 			<CreateRole
 				guildId={data.bundle.guild.id}
 				oncreated={(role) => {
@@ -114,7 +114,7 @@
 				}}
 			/>
 			{#if channelId && channelId !== data.bundle.guild.reactionChannelId}
-				<Button color="alternative" type="button" disabled={busy} onclick={saveChannel}>Save channel</Button>
+				<Button color="alternative" type="button" disabled={busy} onclick={saveChannel}>Save Channel</Button>
 			{/if}
 			<Notice text={notice} />
 		</div>

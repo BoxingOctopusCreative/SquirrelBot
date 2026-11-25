@@ -11,7 +11,7 @@
 	<main id="main" class="mx-auto max-w-xl p-8" tabindex="-1">
 		<Heading tag="h1" class="mb-3 font-display text-3xl font-semibold">No servers yet</Heading>
 		<P>You will see servers where SquirrelBot is a member and you have Manage Server or a dashboard role.</P>
-		<Button href="/auth/discord/invite" class="mt-4">Add SquirrelBot to a server</Button>
+		<Button href="/auth/discord/invite" class="mt-4">Add SquirrelBot to a Server</Button>
 	</main>
 {:else}
 	<main id="main" class="mx-auto max-w-5xl p-6" tabindex="-1">

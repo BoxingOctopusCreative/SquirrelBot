@@ -61,7 +61,7 @@
 			oncreated={(channel) => { cfg.channelId = channel.id; }}
 		/>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save confessions</Button>
+			<Button type="submit" disabled={busy}>Save Confessions</Button>
 			<Notice text={notice} />
 		</div>
 	</form>

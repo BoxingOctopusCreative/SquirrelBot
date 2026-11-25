@@ -7,8 +7,8 @@
 	let { data }: { data: { cases: ModCase[] } } = $props();
 </script>
 
-<svelte:head><title>Cases · SquirrelBot</title></svelte:head>
-<PageIntro kicker="Record" title="Cases">
+<svelte:head><title>Moderation Log · SquirrelBot</title></svelte:head>
+<PageIntro kicker="Record" title="Moderation Log">
 	<P>Warns, kicks, bans, timeouts, admin firecall access, and application kicks.</P>
 </PageIntro>
 <section class="list grid gap-3">
@@ -22,6 +22,6 @@
 			<P class="font-mono text-sm">{item.moderatorName} · {item.reason || 'No reason given.'}</P>
 		</Card>
 	{:else}
-		<P class="text-sm">No cases yet.</P>
+		<P class="text-sm">No moderation actions yet.</P>
 	{/each}
 </section>
