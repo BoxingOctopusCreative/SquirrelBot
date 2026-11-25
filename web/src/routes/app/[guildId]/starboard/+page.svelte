@@ -103,7 +103,7 @@
 			</Select>
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save starboard</Button>
+			<Button type="submit" disabled={busy}>Save Starboard</Button>
 			<Notice text={notice} />
 		</div>
 	</form>

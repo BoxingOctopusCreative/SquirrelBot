@@ -50,8 +50,8 @@
 	}
 </script>
 
-<svelte:head><title>Dashboard access · SquirrelBot</title></svelte:head>
-<PageIntro kicker="Who can open this" title="Dashboard access">
+<svelte:head><title>Dashboard Access · SquirrelBot</title></svelte:head>
+<PageIntro kicker="Who can open this" title="Dashboard Access">
 	<P>
 		People with Manage Server can open this dashboard. A role saved here can open it and change settings. Only Manage
 		Server can change this list. A role SquirrelBot creates has no Discord permissions of its own. Assign it in Discord
@@ -67,8 +67,8 @@
 			<RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} />
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button color="alternative" type="button" onclick={addRole}>Add role</Button>
-			<Button type="button" disabled={busy} onclick={save}>Save access</Button>
+			<Button color="alternative" type="button" onclick={addRole}>Add Role</Button>
+			<Button type="button" disabled={busy} onclick={save}>Save Access</Button>
 			<Notice text={notice} />
 		</div>
 		<div class="list grid gap-3">

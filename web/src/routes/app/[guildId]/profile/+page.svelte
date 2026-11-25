@@ -99,9 +99,9 @@
 		</Field>
 		<input type="hidden" name="clearAvatar" value={clearAvatar ? '1' : '0'} />
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save profile</Button>
+			<Button type="submit" disabled={busy}>Save Profile</Button>
 			{#if (profile.customAvatar || preview) && !clearAvatar}
-				<Button color="alternative" type="button" disabled={busy} onclick={useUsualPicture}>Use the usual picture</Button>
+				<Button color="alternative" type="button" disabled={busy} onclick={useUsualPicture}>Use the Usual Picture</Button>
 			{/if}
 			{#if clearAvatar}<span class="text-sm text-gray-500">Save profile to use the usual picture.</span>{/if}
 			<Notice text={notice} />

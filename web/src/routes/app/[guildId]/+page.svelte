@@ -22,7 +22,7 @@
 </script>
 
 <svelte:head><title>{data.bundle.guild.name} · SquirrelBot</title></svelte:head>
-<PageIntro kicker={data.bundle.guild.name} title="On duty">
+<PageIntro kicker={data.bundle.guild.name} title="Overview">
 	<P>{sentence}</P>
 </PageIntro>
 <nav class="mb-6 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3" aria-label="Live work">
@@ -30,7 +30,7 @@
 		<b class="font-display text-3xl">{counts.scheduledAnnouncements}</b><span class="text-xs tracking-wide uppercase underline">Queued</span>
 	</Card>
 	<Card href={`/app/${id}/escalations`} size="xl" class="flex-col justify-end gap-1 p-4 {counts.activeEscalations > 0 ? 'border-primary-500' : ''}">
-		<b class="font-display text-3xl">{counts.activeEscalations}</b><span class="text-xs tracking-wide uppercase underline">On Duty</span>
+		<b class="font-display text-3xl">{counts.activeEscalations}</b><span class="text-xs tracking-wide uppercase underline">Firecall grants</span>
 	</Card>
 	<Card href={`/app/${id}/verification`} size="xl" class="flex-col justify-end gap-1 p-4 {counts.pendingGate > 0 ? 'border-red-500' : ''}">
 		<b class="font-display text-3xl">{counts.pendingGate}</b><span class="text-xs tracking-wide uppercase underline">Applicants</span>
@@ -43,10 +43,10 @@
 	<P class="mb-4">Next application kick: {when(data.bundle.nextKick)}</P>
 {/if}
 <Card size="xl" class="flex-col gap-4 p-5">
-	<P>{counts.cases} moderation cases on record.</P>
+	<P>{counts.cases} moderation actions on record. Warns, kicks, bans, timeouts, firecall grants, and application kicks.</P>
 	<div class="flex flex-wrap items-center gap-2">
-		<Button href={`/app/${id}/announcements`}>Write an announcement</Button>
-		<Button href={`/app/${id}/escalations`} color="alternative">Grant admin firecall access</Button>
-		<Button href={`/app/${id}/verification`} color="alternative">Set the application deadline</Button>
+		<Button href={`/app/${id}/announcements`}>Write an Announcement</Button>
+		<Button href={`/app/${id}/escalations`} color="alternative">Grant Admin Firecall Access</Button>
+		<Button href={`/app/${id}/verification`} color="alternative">Set the Application Deadline</Button>
 	</div>
 </Card>

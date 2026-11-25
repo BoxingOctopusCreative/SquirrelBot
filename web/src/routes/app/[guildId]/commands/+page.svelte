@@ -101,7 +101,7 @@ else
 end`}</pre>
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit">{editing ? 'Update command' : 'Save command'}</Button>
+			<Button type="submit">{editing ? 'Update Command' : 'Save Command'}</Button>
 			{#if editing}<Button color="alternative" type="button" onclick={clearForm}>Cancel</Button>{/if}
 			<Notice text={notice} />
 		</div>

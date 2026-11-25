@@ -77,7 +77,7 @@
 			</Select>
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
-			<Button type="submit" disabled={busy}>Save automod</Button>
+			<Button type="submit" disabled={busy}>Save Automod</Button>
 			<Notice text={notice} />
 		</div>
 	</form>

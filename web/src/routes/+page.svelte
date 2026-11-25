@@ -34,7 +34,7 @@
 					<p class="hint">Sign in to open servers where SquirrelBot is already installed.</p>
 				</div>
 				<div class="login-choice">
-					<Button href="/auth/discord/invite" color="alternative">Add SquirrelBot to a server</Button>
+					<Button href="/auth/discord/invite" color="alternative">Add SquirrelBot to a Server</Button>
 					<p class="hint">Add it to a new server when you need to.</p>
 				</div>
 			</div>

@@ -63,7 +63,7 @@
 			disabled={busy}
 			onkeydown={onKeydown}
 		/>
-		<Button color="alternative" type="button" disabled={busy} onclick={create}>Create role</Button>
+		<Button color="alternative" type="button" disabled={busy} onclick={create}>Create Role</Button>
 	</div>
 	<Notice text={notice} />
 </div>
