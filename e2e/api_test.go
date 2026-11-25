@@ -238,10 +238,12 @@ func TestDashboardJourney(t *testing.T) {
 	status, body = call(t, http.MethodPatch, "/api/guilds/"+harness.GuildID, map[string]any{
 		"modLogChannelId": harness.GeneralChannelID, "modRoleId": harness.ModRoleID,
 		"adminRoleId": harness.AdminRoleID, "welcomeChannelId": harness.GeneralChannelID,
-		"welcomeMessage": "Hello {user}", "autoroleId": harness.MemberRoleID, "prefix": "?",
+		"welcomeMessage": "Hello {user}", "leaveChannelId": harness.AnnounceChannelID,
+		"leaveMessage": "Goodbye {username}", "autoroleId": harness.MemberRoleID, "prefix": "?",
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
-	if asMap(t, body)["prefix"] != "?" || asMap(t, body)["welcomeMessage"] != "Hello {user}" {
+	saved := asMap(t, body)
+	if saved["prefix"] != "?" || saved["welcomeMessage"] != "Hello {user}" || saved["leaveMessage"] != "Goodbye {username}" {
 		t.Fatalf("settings %s", body)
 	}
 

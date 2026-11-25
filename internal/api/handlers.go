@@ -186,15 +186,19 @@ func (s *Server) patchSettings(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusBadRequest, "Could not read that request.")
 	}
 	body.ID = c.Params("guildID")
-	if !optionalID(body.ModLogChannelID) || !optionalID(body.ModRoleID) || !optionalID(body.AdminRoleID) || !optionalID(body.WelcomeChannelID) || !optionalID(body.AutoroleID) {
+	if !optionalID(body.ModLogChannelID) || !optionalID(body.ModRoleID) || !optionalID(body.AdminRoleID) || !optionalID(body.WelcomeChannelID) || !optionalID(body.LeaveChannelID) || !optionalID(body.AutoroleID) {
 		return fail(c, fiber.StatusBadRequest, "One of those Discord ids is not valid.")
 	}
 	if !domain.ValidPrefix(body.Prefix) {
 		return fail(c, fiber.StatusBadRequest, "Prefix must be 1 to 5 characters and cannot contain a space or slash.")
 	}
 	body.WelcomeMessage = strings.TrimSpace(body.WelcomeMessage)
+	body.LeaveMessage = strings.TrimSpace(body.LeaveMessage)
 	if len(body.WelcomeMessage) > domain.MaxWelcome {
 		return fail(c, fiber.StatusBadRequest, "Welcome message is too long.")
+	}
+	if len(body.LeaveMessage) > domain.MaxWelcome {
+		return fail(c, fiber.StatusBadRequest, "Leave message is too long.")
 	}
 	if err := s.store.UpdateGuildSettings(c.UserContext(), body); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save settings.")

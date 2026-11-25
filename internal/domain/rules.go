@@ -170,7 +170,7 @@ func TopRolePosition(positions map[string]int, roleIDs []string) int {
 	return top
 }
 
-// ApplyTemplate replaces the small set of placeholders used in welcome and gate messages.
+// ApplyTemplate replaces the small set of placeholders used in welcome, leave, and gate messages.
 func ApplyTemplate(template string, values map[string]string) string {
 	pairs := make([]string, 0, len(values)*2)
 	for key, value := range values {
