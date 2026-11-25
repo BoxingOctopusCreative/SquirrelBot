@@ -162,11 +162,13 @@ func (b *Bot) onGatewayEvent(s *discordgo.Session, event *discordgo.Event) {
 	if event == nil || event.Type != "INTERACTION_CREATE" || len(event.RawData) == 0 {
 		return
 	}
-	interaction, form, ok := confessionFormFromEvent(event.RawData)
-	if !ok {
+	if interaction, form, ok := confessionFormFromEvent(event.RawData); ok {
+		b.submitConfessionForm(s, interaction, form)
 		return
 	}
-	b.submitConfessionForm(s, interaction, form)
+	if interaction, customID, values, ok := ticketFormFromEvent(event.RawData); ok {
+		b.submitTicketFromGateway(s, interaction, customID, values)
+	}
 }
 
 func (b *Bot) submitConfessionForm(s *discordgo.Session, interaction *discordgo.Interaction, form confessionForm) {

@@ -3,6 +3,7 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -213,12 +214,12 @@ func TestDeleteButtonRemovesClosedTicketChannel(t *testing.T) {
 		Roles:       []string{harness.AdminRoleID},
 		Permissions: domain.PermAdministrator,
 	}
-	opened := modalInteraction(t, domain.TicketCustomID("form", 0), harness.GeneralChannelID, member,
-		textRow("subject", "Map pin"),
-		textRow("details", "The pin is missing."),
-	)
-	stack.Bot.HandleInteraction(opened)
-	reply, ok := stack.Discord.InteractionContent(opened.ID)
+	openedID, opened := labelModalEvent(t, domain.TicketCustomID("form", 0), harness.GeneralChannelID, member, map[string]string{
+		"subject": "Map pin",
+		"details": "The pin is missing.",
+	})
+	stack.Bot.HandleGatewayEvent(opened)
+	reply, ok := stack.Discord.InteractionContent(openedID)
 	if !ok || !strings.Contains(reply, "Opened ticket") {
 		t.Fatalf("open reply %q", reply)
 	}
@@ -254,9 +255,11 @@ func TestDeleteButtonRemovesClosedTicketChannel(t *testing.T) {
 	}
 
 	stack.Bot.HandleInteraction(componentInteraction(t, domain.TicketCustomID("close", ticketID), channelID, member))
-	closed := modalInteraction(t, domain.TicketCustomID("close-form", ticketID), channelID, member, textRow("reason", "Fixed the pin."))
-	stack.Bot.HandleInteraction(closed)
-	reply, ok = stack.Discord.InteractionContent(closed.ID)
+	closedID, closed := labelModalEvent(t, domain.TicketCustomID("close-form", ticketID), channelID, member, map[string]string{
+		"reason": "Fixed the pin.",
+	})
+	stack.Bot.HandleGatewayEvent(closed)
+	reply, ok = stack.Discord.InteractionContent(closedID)
 	if !ok || !strings.Contains(reply, "will be deleted in 10 seconds") {
 		t.Fatalf("close reply %q", reply)
 	}
@@ -339,28 +342,29 @@ func componentInteraction(t *testing.T, customID, channelID string, member *disc
 	}}
 }
 
-func modalInteraction(t *testing.T, customID, channelID string, member *discordgo.Member, rows ...discordgo.MessageComponent) *discordgo.InteractionCreate {
+func labelModalEvent(t *testing.T, customID, channelID string, member *discordgo.Member, fields map[string]string) (string, *discordgo.Event) {
 	t.Helper()
 	n := interactionSeq.Add(1)
-	return &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
-		ID:        fmt.Sprintf("9100000000000%05d", n),
-		AppID:     harness.BotUserID,
-		Token:     fmt.Sprintf("token-%d", n),
-		Type:      discordgo.InteractionModalSubmit,
-		GuildID:   harness.GuildID,
-		ChannelID: channelID,
-		Member:    member,
-		Data: discordgo.ModalSubmitInteractionData{
-			CustomID:   customID,
-			Components: rows,
-		},
-	}}
-}
-
-func textRow(customID, value string) discordgo.MessageComponent {
-	return &discordgo.ActionsRow{Components: []discordgo.MessageComponent{
-		&discordgo.TextInput{CustomID: customID, Value: value},
-	}}
+	id := fmt.Sprintf("9100000000000%05d", n)
+	components := make([]map[string]any, 0, len(fields))
+	for key, value := range fields {
+		components = append(components, map[string]any{
+			"type": 18,
+			"component": map[string]any{
+				"type": 4, "custom_id": key, "value": value,
+			},
+		})
+	}
+	raw, err := json.Marshal(map[string]any{
+		"id": id, "application_id": harness.BotUserID, "type": 5,
+		"guild_id": harness.GuildID, "channel_id": channelID,
+		"token": fmt.Sprintf("token-%d", n), "member": member,
+		"data": map[string]any{"custom_id": customID, "components": components},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id, &discordgo.Event{Type: "INTERACTION_CREATE", RawData: raw}
 }
 
 func assertReply(t *testing.T, interactionID, want string) {
