@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Button, Card, Input, P, Select, Textarea } from 'flowbite-svelte';
+	import { Button, Card, Input, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { sendJSON } from '#lib/api';
 	import Field from '#lib/Field.svelte';
+	import IdMultiSelect from '#lib/IdMultiSelect.svelte';
 	import Notice from '#lib/Notice.svelte';
 	import PageIntro from '#lib/PageIntro.svelte';
 	import type { Bundle, CustomCommand } from '#lib/types';
@@ -75,11 +76,10 @@
 			<Textarea class="min-h-64 font-mono text-sm" bind:value={response} maxlength={8000} required spellcheck={false} rows={14} />
 		</Field>
 		<Field label="Roles this command may change" hint="addRole and removeRole only accept these. Use the role name or its id.">
-			<Select multiple placeholder="" bind:value={roleIds}>
-				{#each data.bundle.roles as role (role.id)}
-					<option value={role.id} disabled={role.managed}>{role.name}</option>
-				{/each}
-			</Select>
+			<IdMultiSelect
+				options={data.bundle.roles.map((role) => ({ value: role.id, name: role.name, disabled: role.managed }))}
+				bind:value={roleIds}
+			/>
 		</Field>
 		<div class="grid gap-2 text-sm">
 			<h2 class="font-display text-lg font-semibold">What a script can do</h2>

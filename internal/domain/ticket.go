@@ -104,11 +104,9 @@ func ValidateTicketChannels(panelID, categoryID, supportRoleID, logID string) er
 	return nil
 }
 
-// TicketReady reports whether a server can open tickets and post the panel.
-func TicketReady(panelID, categoryID, supportRoleID string) error {
-	if !ValidSnowflake(panelID) {
-		return fmt.Errorf("Choose a panel channel.")
-	}
+// TicketOpenReady reports whether a member can open a ticket.
+// The panel channel is not required. The button already lives in a channel.
+func TicketOpenReady(categoryID, supportRoleID string) error {
 	if !ValidSnowflake(categoryID) {
 		return fmt.Errorf("Choose a category for ticket channels.")
 	}
@@ -116,6 +114,14 @@ func TicketReady(panelID, categoryID, supportRoleID string) error {
 		return fmt.Errorf("Choose the support role.")
 	}
 	return nil
+}
+
+// TicketReady reports whether a server can open tickets and post the panel.
+func TicketReady(panelID, categoryID, supportRoleID string) error {
+	if !ValidSnowflake(panelID) {
+		return fmt.Errorf("Choose a panel channel.")
+	}
+	return TicketOpenReady(categoryID, supportRoleID)
 }
 
 // TicketPanelText is the message posted above the Open a ticket button.

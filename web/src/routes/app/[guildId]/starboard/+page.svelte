@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { Button, Card, Checkbox, Input, P, Select } from 'flowbite-svelte';
+	import { Button, Card, Checkbox, Input, P } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
 	import CreateChannel from '#lib/CreateChannel.svelte';
 	import Field from '#lib/Field.svelte';
+	import IdMultiSelect from '#lib/IdMultiSelect.svelte';
 	import Notice from '#lib/Notice.svelte';
 	import NumberInput from '#lib/NumberInput.svelte';
 	import PageIntro from '#lib/PageIntro.svelte';
@@ -71,15 +72,18 @@
 			</span>
 		</Field>
 		<Field label="Pick an emoji" hint="A server emoji fills the field above. You can still type a different one.">
-			<Select
-				placeholder=""
-				items={emojiItems}
+			<select
+				class="block w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 focus:outline-hidden dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-primary-500 dark:focus:ring-primary-500"
 				value={serverEmoji}
 				onchange={(event) => {
 					const value = event.currentTarget.value;
 					if (value) board.emoji = value;
 				}}
-			/>
+			>
+				{#each emojiItems as item (item.value)}
+					<option value={item.value}>{item.name}</option>
+				{/each}
+			</select>
 		</Field>
 		<Field label="Starboard channel" hint="A channel you create here stays visible to members.">
 			<ChannelSelect channels={data.bundle.channels} bind:value={board.channelId} />
@@ -96,11 +100,10 @@
 		<Checkbox bind:checked={board.selfStar}>Count a member's reaction on their own message</Checkbox>
 		<Checkbox bind:checked={board.nsfw}>Show images from NSFW channels</Checkbox>
 		<Field label="Channels to skip" hint="Messages in these channels are never posted.">
-			<Select multiple placeholder="" bind:value={board.ignoredChannelIds}>
-				{#each data.bundle.channels as channel (channel.id)}
-					<option value={channel.id}>#{channel.name}</option>
-				{/each}
-			</Select>
+			<IdMultiSelect
+				options={data.bundle.channels.map((channel) => ({ value: channel.id, name: `#${channel.name}` }))}
+				bind:value={board.ignoredChannelIds}
+			/>
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
 			<Button type="submit" disabled={busy}>Save Starboard</Button>

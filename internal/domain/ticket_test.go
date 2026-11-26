@@ -56,6 +56,12 @@ func TestTicketReady(t *testing.T) {
 	if err := TicketReady("777777777777777771", "777777777777777773", "888888888888888882"); err != nil {
 		t.Fatal(err)
 	}
+	if err := TicketOpenReady("", "888888888888888882"); err == nil {
+		t.Fatal("missing category")
+	}
+	if err := TicketOpenReady("777777777777777773", "888888888888888882"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestTicketChannelText(t *testing.T) {

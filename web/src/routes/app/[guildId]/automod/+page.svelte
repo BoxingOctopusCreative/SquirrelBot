@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Button, Card, Checkbox, P, Select, Textarea } from 'flowbite-svelte';
+	import { Button, Card, Checkbox, P, Textarea } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
+	import ChoiceSelect from '#lib/ChoiceSelect.svelte';
 	import Field from '#lib/Field.svelte';
+	import IdMultiSelect from '#lib/IdMultiSelect.svelte';
 	import Notice from '#lib/Notice.svelte';
 	import NumberInput from '#lib/NumberInput.svelte';
 	import PageIntro from '#lib/PageIntro.svelte';
@@ -59,22 +61,20 @@
 		<Field label="Minimum letters before the caps check"><NumberInput min={0} max={200} bind:value={automod.capsMinLength} /></Field>
 		<Field label="Blocked words" hint="One word per line. Whole words only."><Textarea bind:value={words} rows={6} /></Field>
 		<Field label="After deleting">
-			<Select items={actions} bind:value={automod.action} placeholder="" />
+			<ChoiceSelect options={actions} bind:value={automod.action} />
 		</Field>
 		<Field label="Timeout length, in seconds"><NumberInput min={60} max={2419200} bind:value={automod.timeoutSeconds} /></Field>
 		<Field label="Ignored channels">
-			<Select multiple placeholder="" bind:value={automod.ignoredChannelIds}>
-				{#each data.bundle.channels as channel (channel.id)}
-					<option value={channel.id}>#{channel.name}</option>
-				{/each}
-			</Select>
+			<IdMultiSelect
+				options={data.bundle.channels.map((channel) => ({ value: channel.id, name: `#${channel.name}` }))}
+				bind:value={automod.ignoredChannelIds}
+			/>
 		</Field>
 		<Field label="Ignored roles">
-			<Select multiple placeholder="" bind:value={automod.ignoredRoleIds}>
-				{#each data.bundle.roles as role (role.id)}
-					<option value={role.id}>{role.name}</option>
-				{/each}
-			</Select>
+			<IdMultiSelect
+				options={data.bundle.roles.map((role) => ({ value: role.id, name: role.name }))}
+				bind:value={automod.ignoredRoleIds}
+			/>
 		</Field>
 		<div class="flex flex-wrap items-center gap-3">
 			<Button type="submit" disabled={busy}>Save Automod</Button>
