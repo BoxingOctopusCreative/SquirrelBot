@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Button, Card, Heading, Input, P, Select } from 'flowbite-svelte';
+	import { Button, Card, Heading, Input, P } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
+	import ChoiceSelect from '#lib/ChoiceSelect.svelte';
 	import Field from '#lib/Field.svelte';
 	import MemberPick from '#lib/MemberPick.svelte';
 	import Notice from '#lib/Notice.svelte';
@@ -28,7 +29,12 @@
 		{ value: 'mod', name: 'Mod' },
 		{ value: 'admin', name: 'Admin' }
 	];
-	let grantRoles = $derived(allow.map((role) => ({ value: role.roleId, name: roleName(role.roleId) })));
+	let grantRoles = $derived(allow.map((role) => ({
+		id: role.roleId,
+		name: roleName(role.roleId),
+		position: 0,
+		managed: false
+	})));
 
 	function addRole() {
 		if (!roleId) return;
@@ -101,7 +107,7 @@
 	<div class="grid gap-4 md:grid-cols-2">
 		<Field label="Role"><RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} /></Field>
 		<Field label="Tier">
-			<Select items={tiers} bind:value={tier} placeholder="" />
+			<ChoiceSelect options={tiers} bind:value={tier} />
 		</Field>
 	</div>
 	<Field label="Longest grant, in hours" hint="From 1 hour to 720 hours (30 days).">
@@ -132,7 +138,7 @@
 		<Heading tag="h2" class="font-display text-xl font-semibold">Grant</Heading>
 		<MemberPick guildId={data.bundle.guild.id} bind:userId bind:userName />
 		<Field label="Role">
-			<Select placeholder="" bind:value={grantRole} items={grantRoles} />
+			<RoleSelect roles={grantRoles} bind:value={grantRole} allowEmpty={grantRoles.length === 0} />
 		</Field>
 		<Field label="Duration" hint="Examples: 4h, 2d, 1w."><Input bind:value={duration} required /></Field>
 		<Field label="Reason"><Input bind:value={reason} required maxlength={400} /></Field>

@@ -105,6 +105,21 @@ func (s *Store) SaveTicketPanelMessage(ctx context.Context, guildID, messageID s
 	return nil
 }
 
+// SaveTicketPanelLocation records the channel and message where the Open a ticket button lives.
+func (s *Store) SaveTicketPanelLocation(ctx context.Context, guildID, channelID, messageID string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE ticket_configs
+		SET panel_channel_id = $2, panel_message_id = $3
+		WHERE guild_id = $1`, guildID, channelID, messageID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func scanTicket(row pgx.Row) (Ticket, error) {
 	var item Ticket
 	err := row.Scan(

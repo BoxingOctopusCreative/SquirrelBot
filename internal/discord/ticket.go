@@ -121,10 +121,12 @@ func (b *Bot) openTicketForm(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 	ctx, cancel := contextTimeout()
 	defer cancel()
-	if _, err := b.readyTicketConfig(ctx, i.GuildID); err != nil {
+	cfg, err := b.readyTicketConfig(ctx, i.GuildID)
+	if err != nil {
 		_ = respondEphemeral(s, i, err.Error())
 		return
 	}
+	b.rememberTicketPanel(ctx, i, cfg)
 	existing, err := b.store.OpenTicketFor(ctx, i.GuildID, i.Member.User.ID)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		b.log.Error("ticket lookup", "guild", i.GuildID, "err", err)
@@ -535,10 +537,27 @@ func (b *Bot) readyTicketConfig(ctx context.Context, guildID string) (store.Tick
 		b.log.Error("ticket config", "guild", guildID, "err", err)
 		return store.TicketConfig{}, errors.New("I could not load tickets for this server.")
 	}
-	if err := domain.TicketReady(cfg.PanelChannelID, cfg.CategoryID, cfg.SupportRoleID); err != nil {
+	if err := domain.TicketOpenReady(cfg.CategoryID, cfg.SupportRoleID); err != nil {
 		return store.TicketConfig{}, err
 	}
 	return cfg, nil
+}
+
+func (b *Bot) rememberTicketPanel(ctx context.Context, i *discordgo.InteractionCreate, cfg store.TicketConfig) {
+	if i.Message == nil {
+		return
+	}
+	channelID := i.ChannelID
+	messageID := i.Message.ID
+	if !domain.ValidSnowflake(channelID) || !domain.ValidSnowflake(messageID) {
+		return
+	}
+	if cfg.PanelChannelID == channelID && cfg.PanelMessageID == messageID {
+		return
+	}
+	if err := b.store.SaveTicketPanelLocation(ctx, i.GuildID, channelID, messageID); err != nil {
+		b.log.Warn("ticket panel location", "guild", i.GuildID, "err", err)
+	}
 }
 
 func (b *Bot) requireTicketPlaces(guildID string, cfg store.TicketConfig) error {

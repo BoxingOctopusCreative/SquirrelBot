@@ -193,6 +193,55 @@ func setPrefix(t *testing.T, prefix string) {
 	must(t, status, body, http.StatusOK)
 }
 
+func TestOpenTicketSurvivesMissingPanelChannel(t *testing.T) {
+	status, body := call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/channels", map[string]any{
+		"name": "Panel move", "purpose": "ticket-category",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusCreated)
+	categoryID, _ := asMap(t, body)["id"].(string)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/tickets", map[string]any{
+		"panelChannelId": "",
+		"categoryId":     categoryID,
+		"supportRoleId":  harness.ModRoleID,
+		"panelTitle":     "Help",
+		"panelBody":      "Tell us what you need.",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
+	member := &discordgo.Member{
+		User:        &discordgo.User{ID: "444444444444444461", Username: "birch"},
+		Roles:       []string{harness.AdminRoleID},
+		Permissions: domain.PermAdministrator,
+	}
+	click := componentInteraction(t, domain.TicketCustomID("open", 0), harness.AnnounceChannelID, member)
+	click.Message = &discordgo.Message{ID: "777777777777777780", ChannelID: harness.AnnounceChannelID}
+	stack.Bot.HandleInteraction(click)
+	reply, ok := stack.Discord.InteractionContent(click.ID)
+	if !ok || reply != "" {
+		t.Fatalf("open form %q", reply)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	tickets := asMap(t, body)["tickets"].(map[string]any)
+	if tickets["panelChannelId"] != harness.AnnounceChannelID {
+		t.Fatalf("panel channel %v", tickets["panelChannelId"])
+	}
+
+	moved := componentInteraction(t, domain.TicketCustomID("open", 0), harness.GeneralChannelID, member)
+	moved.Message = &discordgo.Message{ID: "777777777777777781", ChannelID: harness.GeneralChannelID}
+	stack.Bot.HandleInteraction(moved)
+	reply, ok = stack.Discord.InteractionContent(moved.ID)
+	if !ok || reply != "" {
+		t.Fatalf("moved form %q", reply)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	tickets = asMap(t, body)["tickets"].(map[string]any)
+	if tickets["panelChannelId"] != harness.GeneralChannelID {
+		t.Fatalf("moved panel channel %v", tickets["panelChannelId"])
+	}
+}
+
 func TestDeleteButtonRemovesClosedTicketChannel(t *testing.T) {
 	status, body := call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/channels", map[string]any{
 		"name": "Delete test", "purpose": "ticket-category",
