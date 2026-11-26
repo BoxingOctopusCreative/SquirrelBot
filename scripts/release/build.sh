@@ -32,7 +32,8 @@ for platform in $platforms; do
 	dir="$stage/$name"
 	echo "building $name"
 	mkdir -p "$dir/web"
-	CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags="-s -w" \
+	CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+		-ldflags="-s -w -X github.com/BoxingOctopus/squirrelbot/internal/version.Version=${version}" \
 		-o "$dir/squirrelbot" ./cmd/squirrelbot
 	cp -a web/build "$dir/web/build"
 	cp LICENSE "$dir/LICENSE"

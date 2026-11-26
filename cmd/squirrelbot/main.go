@@ -13,10 +13,12 @@ import (
 	"github.com/BoxingOctopus/squirrelbot/internal/db"
 	"github.com/BoxingOctopus/squirrelbot/internal/discord"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
+	"github.com/BoxingOctopus/squirrelbot/internal/version"
 )
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	log.Info("squirrelbot starting", "version", version.String())
 	cfg, err := config.Load()
 	if err != nil {
 		log.Error("configuration", "err", err.Error())

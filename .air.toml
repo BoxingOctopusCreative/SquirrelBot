@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/main ./cmd/squirrelbot"
+cmd = "go build -ldflags \"-s -w -X github.com/BoxingOctopus/squirrelbot/internal/version.Version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)\" -o ./tmp/main ./cmd/squirrelbot"
 bin = "./tmp/main"
 include_ext = ["go", "sql"]
 include_file = [".env"]

@@ -19,6 +19,7 @@ import (
 	"github.com/BoxingOctopus/squirrelbot/internal/domain"
 	"github.com/BoxingOctopus/squirrelbot/internal/secretbox"
 	"github.com/BoxingOctopus/squirrelbot/internal/store"
+	"github.com/BoxingOctopus/squirrelbot/internal/version"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -432,6 +433,7 @@ func (s *Server) me(c *fiber.Ctx) error {
 		"id":        session.UserID,
 		"username":  session.Username,
 		"avatarUrl": avatarURL(session.UserID, session.Avatar),
+		"version":   version.String(),
 	})
 }
 

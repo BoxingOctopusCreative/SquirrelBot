@@ -39,6 +39,10 @@
 			<a href="/terms">Terms of Service</a>
 			<span class="legal-sep" aria-hidden="true">|</span>
 			<a href="/privacy">Privacy Policy</a>
+			{#if data.me.version}
+				<span class="legal-sep" aria-hidden="true">|</span>
+				<span class="legal-credit">Version {data.me.version}</span>
+			{/if}
 		</p>
 	</Footer>
 </div>

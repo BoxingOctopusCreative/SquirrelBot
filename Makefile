@@ -1,6 +1,8 @@
 IMAGE_NAME ?= squirrelbot
 CONTAINER ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 COMPOSE = $(CONTAINER) compose
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X github.com/BoxingOctopus/squirrelbot/internal/version.Version=$(VERSION)
 
 .DEFAULT_GOAL := help
 
@@ -37,7 +39,7 @@ db:
 	$(COMPOSE) up postgres -d
 
 up:
-	$(COMPOSE) up --build
+	SQUIRRELBOT_VERSION="$(VERSION)" $(COMPOSE) up --build
 
 down:
 	$(COMPOSE) down
@@ -45,7 +47,7 @@ down:
 build: build-bot build-web
 
 build-bot:
-	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/squirrelbot ./cmd/squirrelbot
+	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/squirrelbot ./cmd/squirrelbot
 
 build-web: web/node_modules
 	npm --prefix web run build
@@ -71,7 +73,7 @@ image:
 	esac; \
 	next="$$major.$$minor.$$((10#$$patch + 1))"; \
 	echo "Building $(IMAGE_NAME):$$next and $(IMAGE_NAME):latest"; \
-	$(CONTAINER) build -t "$(IMAGE_NAME):$$next" -t "$(IMAGE_NAME):latest" . \
+	$(CONTAINER) build --build-arg VERSION="$$next" -t "$(IMAGE_NAME):$$next" -t "$(IMAGE_NAME):latest" . \
 		&& printf '%s\n' "$$next" > "$$version_file"
 
 test:

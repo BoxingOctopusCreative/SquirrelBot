@@ -51,6 +51,7 @@ test.describe('dashboard', () => {
 		await expect(page.getByRole('link', { name: 'Add a Server' })).toHaveAttribute('href', '/auth/discord/invite');
 		await expect(page.getByRole('link', { name: 'Canopy' })).toBeVisible();
 		await expect(page.getByText('Acorn')).toBeVisible();
+		await expect(page.getByText(/^Version \S+$/)).toBeVisible();
 		await page.getByRole('link', { name: 'Canopy' }).click();
 		await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 
