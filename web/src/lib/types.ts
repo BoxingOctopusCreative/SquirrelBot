@@ -2,6 +2,7 @@ export type Me = {
 	id: string;
 	username: string;
 	avatarUrl: string;
+	version: string;
 };
 
 export type GuildSummary = {

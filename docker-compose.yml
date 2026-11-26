@@ -10,7 +10,10 @@ services:
     volumes:
       - pg:/var/lib/postgresql/data
   squirrelbot:
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: ${SQUIRRELBOT_VERSION:-dev}
     env_file: .env
     environment:
       DATABASE_URL: postgres://squirrelbot:squirrelbot@postgres:5432/squirrelbot?sslmode=disable
