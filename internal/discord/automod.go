@@ -83,7 +83,10 @@ func (b *Bot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if b.customCommand(s, m) {
 		return
 	}
-	b.automod(s, m)
+	if b.automod(s, m) {
+		return
+	}
+	b.awardMessageXP(m)
 }
 
 func (b *Bot) customCommand(s *discordgo.Session, m *discordgo.MessageCreate) bool {
@@ -144,21 +147,21 @@ func (b *Bot) customCommand(s *discordgo.Session, m *discordgo.MessageCreate) bo
 	return true
 }
 
-func (b *Bot) automod(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (b *Bot) automod(s *discordgo.Session, m *discordgo.MessageCreate) bool {
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	cfg, err := b.store.GetAutomod(ctx, m.GuildID)
 	if err != nil || !cfg.Enabled {
-		return
+		return false
 	}
 	if domain.ContainsID(cfg.IgnoredChannelIDs, m.ChannelID) {
-		return
+		return false
 	}
 	if m.Member != nil && overlaps(m.Member.Roles, cfg.IgnoredRoleIDs) {
-		return
+		return false
 	}
 	if b.memberIsStaff(m) {
-		return
+		return false
 	}
 	rules := domain.AutomodConfig{
 		Enabled: cfg.Enabled, BlockInvites: cfg.BlockInvites, MentionLimit: cfg.MentionLimit,
@@ -170,13 +173,14 @@ func (b *Bot) automod(s *discordgo.Session, m *discordgo.MessageCreate) {
 		ok = true
 	}
 	if !ok {
-		return
+		return false
 	}
 	b.muted.mark(m.ID)
 	if err := s.ChannelMessageDelete(m.ChannelID, m.ID); err != nil {
 		b.log.Warn("automod delete", "guild", m.GuildID, "err", err)
 	}
 	b.punishAutomod(m, cfg, hit)
+	return true
 }
 
 func (b *Bot) memberIsStaff(m *discordgo.MessageCreate) bool {

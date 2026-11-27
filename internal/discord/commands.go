@@ -99,6 +99,31 @@ func commandDefs() []*discordgo.ApplicationCommand {
 				},
 			},
 			channel("channel", "Channel for the message. Required for Post the message", false)),
+		cmd("rank", "Show a member's level, XP, and place on the leaderboard",
+			user("user", "Member to check. Leave this empty for yourself", false)),
+		cmd("leaderboard", "List members with the most XP",
+			integer("page", "Page of results, 10 members each", false, 1, float64(domain.MaxLevelPage))),
+		cmd("level", "Add XP, set a level, reset progress, or show recent level ups",
+			sub("add", "Add XP to a member",
+				user("user", "Member", true),
+				integer("amount", "XP to add, from 1 to 1000", true, 1, 1000)),
+			sub("set", "Set a member's level. 0 clears that member",
+				user("user", "Member", true),
+				integer("level", "Level, from 0 to 100", true, 0, float64(domain.MaxLevel))),
+			sub("reset", "Clear one member's XP. This one is not backed up",
+				user("user", "Member", true)),
+			sub("reset-all", "Back up every score, then clear the server"),
+			sub("restore", "Restore the last server-wide backup"),
+			sub("log", "Show the last 25 level ups")),
+	}
+}
+
+func sub(name, desc string, options ...*discordgo.ApplicationCommandOption) *discordgo.ApplicationCommandOption {
+	return &discordgo.ApplicationCommandOption{
+		Type:        discordgo.ApplicationCommandOptionSubCommand,
+		Name:        name,
+		Description: desc,
+		Options:     options,
 	}
 }
 

@@ -134,6 +134,47 @@ export type Starboard = {
 	ignoredChannelIds: string[];
 };
 
+export type LevelReward = {
+	level: number;
+	roleId: string;
+};
+
+export type LevelSettings = {
+	guildId: string;
+	enabled: boolean;
+	xpMin: number;
+	xpMax: number;
+	rateCount: number;
+	rateSeconds: number;
+	voiceXp: boolean;
+	announce: string;
+	announceChannelId: string;
+	message: string;
+	announceMinLevel: number;
+	announceMultiple: number;
+	rewardOnly: boolean;
+	replaceRewards: boolean;
+	ignoredChannelIds: string[];
+	ignoredRoleIds: string[];
+	rewards: LevelReward[];
+	backupAt?: string;
+};
+
+export type LevelStanding = {
+	userId: string;
+	userName: string;
+	xp: number;
+	level: number;
+	rank: number;
+};
+
+export type LevelEvent = {
+	userId: string;
+	userName: string;
+	level: number;
+	createdAt: string;
+};
+
 export type GuildEmoji = {
 	id: string;
 	name: string;
@@ -153,6 +194,7 @@ export type Bundle = {
 	logging: LogConfig;
 	escalationRoles: EscalationRole[];
 	starboard: Starboard;
+	levels: LevelSettings;
 	confessions: ConfessionConfig;
 	tickets: TicketConfig;
 	managerRoleIds: string[];

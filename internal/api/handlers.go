@@ -94,6 +94,10 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load the starboard.")
 	}
+	levels, err := s.store.GetLevels(ctx, guildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load levels.")
+	}
 	confessions, err := s.store.GetConfessionConfig(ctx, guildID)
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not load confessions.")
@@ -110,7 +114,7 @@ func (s *Server) bundle(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"guild": guild, "counts": counts, "nextKick": nextKick,
 		"channels": channels, "categories": categories, "roles": roles, "emojis": emojis, "gate": gate, "automod": automod,
-		"logging": logs, "escalationRoles": escalationRoles, "starboard": starboard,
+		"logging": logs, "escalationRoles": escalationRoles, "starboard": starboard, "levels": levels,
 		"confessions":    confessions,
 		"tickets":        tickets,
 		"managerRoleIds": managerRoles, "manageServer": manageServer,
@@ -598,6 +602,133 @@ func (s *Server) putStarboard(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusInternalServerError, "Could not save the starboard.")
 	}
 	return c.JSON(saved)
+}
+
+func (s *Server) levels(c *fiber.Ctx) error {
+	guildID := c.Params("guildID")
+	page := c.QueryInt("page", 1)
+	rows, total, err := s.store.Leaderboard(c.UserContext(), guildID, page)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load the leaderboard.")
+	}
+	events, err := s.store.ListLevelEvents(c.UserContext(), guildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load level ups.")
+	}
+	if page < 1 {
+		page = 1
+	}
+	return c.JSON(fiber.Map{
+		"leaderboard": rows,
+		"total":       total,
+		"page":        page,
+		"events":      events,
+	})
+}
+
+func (s *Server) putLevels(c *fiber.Ctx) error {
+	var body store.LevelSettings
+	if err := c.BodyParser(&body); err != nil {
+		return fail(c, fiber.StatusBadRequest, "Could not read that request.")
+	}
+	body.GuildID = c.Params("guildID")
+	if body.Rewards == nil {
+		body.Rewards = []store.LevelReward{}
+	}
+	if body.IgnoredChannelIDs == nil {
+		body.IgnoredChannelIDs = []string{}
+	}
+	if body.IgnoredRoleIDs == nil {
+		body.IgnoredRoleIDs = []string{}
+	}
+	cleaned, err := domain.ValidateLevels(body.GuildID, levelConfig(body))
+	if err != nil {
+		return fail(c, fiber.StatusBadRequest, err.Error())
+	}
+	body.XPMin = cleaned.XPMin
+	body.XPMax = cleaned.XPMax
+	body.Announce = cleaned.Announce
+	body.AnnounceChannelID = cleaned.AnnounceChannelID
+	body.Message = cleaned.Message
+	body.IgnoredChannelIDs = cleaned.IgnoredChannelIDs
+	body.IgnoredRoleIDs = cleaned.IgnoredRoleIDs
+	body.Rewards = storeRewards(cleaned.Rewards)
+	if err := s.store.SaveLevels(c.UserContext(), body); err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save levels.")
+	}
+	saved, err := s.store.GetLevels(c.UserContext(), body.GuildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save levels.")
+	}
+	return c.JSON(saved)
+}
+
+func (s *Server) resetLevels(c *fiber.Ctx) error {
+	guildID := c.Params("guildID")
+	members, err := s.store.BackupAndClearLevels(c.UserContext(), guildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not reset levels.")
+	}
+	s.syncLevelMembers(c, guildID, members, false)
+	return c.JSON(fiber.Map{"members": len(members)})
+}
+
+func (s *Server) restoreLevels(c *fiber.Ctx) error {
+	guildID := c.Params("guildID")
+	members, err := s.store.RestoreLevels(c.UserContext(), guildID)
+	if errors.Is(err, store.ErrNoLevelBackup) {
+		return fail(c, fiber.StatusBadRequest, err.Error())
+	}
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not restore levels.")
+	}
+	s.syncLevelMembers(c, guildID, members, true)
+	return c.JSON(fiber.Map{"members": len(members)})
+}
+
+func (s *Server) syncLevelMembers(c *fiber.Ctx, guildID string, members []store.LevelMember, useXP bool) {
+	if s.bot == nil || len(members) == 0 {
+		return
+	}
+	cfg, err := s.store.GetLevels(c.UserContext(), guildID)
+	if err != nil {
+		s.log.Warn("level roles", "guild", guildID, "err", err)
+		return
+	}
+	s.bot.SyncLevelMembers(guildID, members, cfg.Rewards, cfg.ReplaceRewards, useXP)
+}
+
+func levelConfig(body store.LevelSettings) domain.LevelConfig {
+	rewards := make([]domain.LevelReward, 0, len(body.Rewards))
+	for _, reward := range body.Rewards {
+		rewards = append(rewards, domain.LevelReward{Level: reward.Level, RoleID: reward.RoleID})
+	}
+	return domain.LevelConfig{
+		Enabled:           body.Enabled,
+		XPMin:             body.XPMin,
+		XPMax:             body.XPMax,
+		RateCount:         body.RateCount,
+		RateSeconds:       body.RateSeconds,
+		VoiceXP:           body.VoiceXP,
+		Announce:          body.Announce,
+		AnnounceChannelID: body.AnnounceChannelID,
+		Message:           body.Message,
+		AnnounceMinLevel:  body.AnnounceMinLevel,
+		AnnounceMultiple:  body.AnnounceMultiple,
+		RewardOnly:        body.RewardOnly,
+		ReplaceRewards:    body.ReplaceRewards,
+		IgnoredChannelIDs: body.IgnoredChannelIDs,
+		IgnoredRoleIDs:    body.IgnoredRoleIDs,
+		Rewards:           rewards,
+	}
+}
+
+func storeRewards(rewards []domain.LevelReward) []store.LevelReward {
+	out := make([]store.LevelReward, 0, len(rewards))
+	for _, reward := range rewards {
+		out = append(out, store.LevelReward{Level: reward.Level, RoleID: reward.RoleID})
+	}
+	return out
 }
 
 func (s *Server) putConfessions(c *fiber.Ctx) error {

@@ -31,6 +31,8 @@ type Bot struct {
 	ready   atomic.Bool
 	spam    *spamTracker
 	muted   *recentIDs
+	xp      *xpGrants
+	voices  *voiceRoster
 	once    sync.Once
 }
 
@@ -48,6 +50,7 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 		discordgo.IntentGuildModeration |
 		discordgo.IntentGuildMessages |
 		discordgo.IntentGuildMessageReactions |
+		discordgo.IntentGuildVoiceStates |
 		discordgo.IntentMessageContent
 	session.State.MaxMessageCount = 80
 	session.State.TrackMembers = false
@@ -63,6 +66,8 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 		log:     log,
 		spam:    newSpamTracker(),
 		muted:   newRecentIDs(),
+		xp:      newXPGrants(),
+		voices:  newVoiceRoster(),
 	}
 	session.AddHandler(bot.onReady)
 	session.AddHandler(bot.onGuildCreate)
@@ -79,6 +84,7 @@ func New(token string, st *store.Store, log *slog.Logger) (*Bot, error) {
 	session.AddHandler(bot.onReactionAdd)
 	session.AddHandler(bot.onReactionRemove)
 	session.AddHandler(bot.onReactionRemoveAll)
+	session.AddHandler(bot.onVoiceState)
 	return bot, nil
 }
 
@@ -159,6 +165,9 @@ func (b *Bot) onGuildCreate(s *discordgo.Session, g *discordgo.GuildCreate) {
 	defer cancel()
 	if err := b.store.EnsureGuild(ctx, g.ID, g.Name, g.Icon); err != nil {
 		b.log.Error("ensure guild", "guild", g.ID, "err", err)
+	}
+	if g.Guild != nil {
+		b.seedVoice(g.VoiceStates)
 	}
 }
 

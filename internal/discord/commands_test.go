@@ -26,7 +26,7 @@ func TestCommandPayloadOmitsNulls(t *testing.T) {
 		name, _ := command["name"].(string)
 		names[name] = true
 	}
-	for _, name := range []string{"confession", "confession-review", "confession-channel"} {
+	for _, name := range []string{"confession", "confession-review", "confession-channel", "rank", "leaderboard", "level"} {
 		if !names[name] {
 			t.Fatalf("missing %s", name)
 		}

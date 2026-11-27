@@ -40,6 +40,10 @@ func TestSetupPurpose(t *testing.T) {
 	if !ok || private {
 		t.Fatal("starboard should be public")
 	}
+	_, private, ok = SetupPurpose("levels")
+	if !ok || private {
+		t.Fatal("levels should be public")
+	}
 	_, private, ok = SetupPurpose("confession-review")
 	if !ok || !private {
 		t.Fatal("confession review should be private")

@@ -40,6 +40,7 @@
 				['/announcements', 'Announcements'],
 				['/reactions', 'Reaction Roles'],
 				['/starboard', 'Starboard'],
+				['/levels', 'Levels'],
 				['/confessions', 'Confessions'],
 				['/tickets', 'Support Tickets'],
 				['/commands', 'Commands']

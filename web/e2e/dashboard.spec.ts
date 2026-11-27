@@ -67,6 +67,7 @@ test.describe('dashboard', () => {
 			['Welcome', 'Welcome'],
 			['Reaction Roles', 'Reaction Roles'],
 			['Starboard', 'Starboard'],
+			['Levels', 'Levels'],
 			['Confessions', 'Confessions'],
 			['Support Tickets', 'Support Tickets'],
 			['Commands', 'Commands']
@@ -196,6 +197,15 @@ test.describe('dashboard', () => {
 		await page.getByLabel('Starboard channel').selectOption({ label: '#announcements' });
 		await page.getByLabel('Stars required').fill('4');
 		await page.getByRole('button', { name: 'Save Starboard' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+	});
+
+	test('saves levels', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('link', { name: 'Levels' }).click();
+		await expect(page.getByRole('heading', { name: 'Levels', exact: true })).toBeVisible();
+		await page.getByRole('checkbox', { name: 'Levels on' }).check();
+		await page.getByRole('button', { name: 'Save Levels' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
 	});
 

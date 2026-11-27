@@ -287,6 +287,35 @@ func TestDashboardJourney(t *testing.T) {
 		t.Fatalf("starboard %s", body)
 	}
 
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/levels", map[string]any{
+		"enabled": true, "xpMin": 10, "xpMax": 25, "rateCount": 1, "rateSeconds": 60, "announce": "current",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/levels", map[string]any{
+		"enabled": true, "xpMin": 15, "xpMax": 25, "rateCount": 1, "rateSeconds": 60,
+		"voiceXp": true, "announce": "channel", "announceChannelId": harness.AnnounceChannelID,
+		"message":          "{{ mention }} reached level {{ level }}.",
+		"announceMinLevel": 0, "announceMultiple": 5, "rewardOnly": false, "replaceRewards": true,
+		"ignoredChannelIds": []string{harness.GeneralChannelID}, "ignoredRoleIds": []string{},
+		"rewards": []map[string]any{{"level": 2, "roleId": harness.MemberRoleID}},
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	savedLevels := asMap(t, body)
+	if savedLevels["xpMin"] != float64(15) || savedLevels["announce"] != "channel" || savedLevels["replaceRewards"] != true {
+		t.Fatalf("levels %s", body)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/levels", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["total"] != float64(0) {
+		t.Fatalf("leaderboard %s", body)
+	}
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/levels/restore", nil, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/levels/reset", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/levels/restore", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
 	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/confessions", map[string]any{
 		"reviewChannelId": harness.GeneralChannelID, "channelId": harness.GeneralChannelID,
 	}, stack.Cookie)
