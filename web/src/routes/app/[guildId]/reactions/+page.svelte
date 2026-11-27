@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { A, Button, Card, Input, P } from 'flowbite-svelte';
+	import { A, Button, Card, Checkbox, Input, P } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
@@ -20,6 +20,8 @@
 	let roleId = $state('');
 	let notice = $state('');
 	let busy = $state(false);
+	let reactionsOn = $state(untrack(() => data.bundle.guild.reactionsEnabled));
+	let toggleNotice = $state('');
 
 	function roleName(id: string): string {
 		return data.bundle.roles.find((role) => role.id === id)?.name ?? id;
@@ -27,6 +29,19 @@
 
 	function channelPath(): string {
 		return `/api/guilds/${data.bundle.guild.id}/reaction-roles/channel`;
+	}
+
+	async function saveToggle() {
+		toggleNotice = '';
+		try {
+			await sendJSON(`/api/guilds/${data.bundle.guild.id}/reaction-roles/enabled`, 'PUT', {
+				enabled: reactionsOn
+			});
+			toggleNotice = 'Saved. Reaction roles updated.';
+			await refreshAll();
+		} catch (err) {
+			toggleNotice = err instanceof Error ? err.message : 'Could not save.';
+		}
 	}
 
 	async function saveChannel() {
@@ -88,6 +103,14 @@
 		For a custom emoji, use name:id. SquirrelBot posts the message.
 	</P>
 </PageIntro>
+<Card size="xl" class="mb-6 flex-col gap-4 p-5">
+	<Checkbox bind:checked={reactionsOn}>Reaction roles on</Checkbox>
+	{#if !reactionsOn}<P>Turn this on before a reaction gives or removes a role. Starboard reactions keep working.</P>{/if}
+	<div class="flex flex-wrap items-center gap-3">
+		<Button type="button" onclick={saveToggle}>Save</Button>
+		<Notice text={toggleNotice} />
+	</div>
+</Card>
 <Card size="xl" class="mb-6 flex-col p-5">
 	<form class="grid gap-4" onsubmit={add}>
 		<Field label="Roles channel" hint="SquirrelBot posts one message in this channel.">

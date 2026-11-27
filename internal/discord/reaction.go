@@ -33,6 +33,10 @@ func (b *Bot) applyReaction(guildID, channelID, userID, messageID string, emoji 
 }
 
 func (b *Bot) grantReactionRole(ctx context.Context, guildID, userID, messageID string, emoji discordgo.Emoji, added bool) bool {
+	guild, err := b.store.GetGuild(ctx, guildID)
+	if err != nil || !guild.ReactionsEnabled {
+		return false
+	}
 	rows, err := b.store.ReactionRolesForMessage(ctx, messageID)
 	if err != nil || len(rows) == 0 {
 		return false

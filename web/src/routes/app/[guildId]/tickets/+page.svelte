@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { A, Button, Card, Heading, Input, P, Textarea } from 'flowbite-svelte';
+	import { A, Button, Card, Checkbox, Heading, Input, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
@@ -76,6 +76,8 @@
 			save();
 		}}
 	>
+		<Checkbox bind:checked={cfg.enabled}>Support tickets on</Checkbox>
+		{#if !cfg.enabled}<P>Turn this on before a member can open a ticket. Open tickets can still be claimed and closed.</P>{/if}
 		<Field label="Panel channel" hint="The Open a ticket button is posted here. Members can read this channel.">
 			<ChannelSelect channels={data.bundle.channels} bind:value={cfg.panelChannelId} />
 		</Field>

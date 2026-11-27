@@ -35,6 +35,17 @@ func (b *Bot) announce(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		_ = respondEphemeral(s, i, err.Error())
 		return
 	}
+	check, cancelCheck := contextTimeout()
+	guild, err := b.store.GetGuild(check, i.GuildID)
+	cancelCheck()
+	if err != nil {
+		_ = respondEphemeral(s, i, "I could not load this server.")
+		return
+	}
+	if !guild.AnnouncementsEnabled {
+		_ = respondEphemeral(s, i, "Turn announcements on in the dashboard.")
+		return
+	}
 	ping := ""
 	if role := optionRole(i, "ping"); role != nil && domain.ValidSnowflake(role.ID) && role.ID != i.GuildID {
 		ping = role.ID
@@ -113,6 +124,13 @@ type GrantInput struct {
 func (b *Bot) GrantEscalation(in GrantInput) (store.Escalation, error) {
 	ctx, cancel := contextTimeout()
 	defer cancel()
+	guild, err := b.store.GetGuild(ctx, in.GuildID)
+	if err != nil {
+		return store.Escalation{}, errors.New("I could not load this server.")
+	}
+	if !guild.FirecallEnabled {
+		return store.Escalation{}, errors.New("Turn admin firecall on in the dashboard.")
+	}
 	role, err := b.store.EscalationRole(ctx, in.GuildID, in.RoleID)
 	if errors.Is(err, store.ErrNotFound) {
 		return store.Escalation{}, errors.New("That role is not on the escalation allowlist. Add it in the dashboard.")
@@ -160,7 +178,6 @@ func (b *Bot) GrantEscalation(in GrantInput) (store.Escalation, error) {
 		GuildID: in.GuildID, Action: "escalate", TargetID: in.UserID, TargetName: in.UserName,
 		ModeratorID: in.ActorID, ModeratorName: in.ActorName, Reason: in.Reason, DurationSeconds: &seconds,
 	})
-	guild, _ := b.store.GetGuild(ctx, in.GuildID)
 	b.dm(in.UserID, fmt.Sprintf("You have a temporary %s role in %s until %s. Reason: %s",
 		role.Tier, b.guildName(in.GuildID), created.ExpiresAt.Format(time.RFC1123), reasonOrNone(in.Reason)))
 	if caseErr == nil {

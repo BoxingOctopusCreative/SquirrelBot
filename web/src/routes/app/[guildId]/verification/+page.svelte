@@ -77,6 +77,8 @@
 
 <Card size="xl" class="mb-6 flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<Checkbox bind:checked={gate.active}>Server application on</Checkbox>
+		{#if !gate.active}<P>Turn this on before members can answer the questions.</P>{/if}
 		<Checkbox bind:checked={gate.enabled}>Kick people who miss the deadline</Checkbox>
 		<fieldset class="grid gap-3">
 			<legend class="text-sm font-medium">Questions</legend>

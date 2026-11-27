@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Card, P } from 'flowbite-svelte';
+	import { Button, Card, Checkbox, P } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
@@ -42,6 +42,8 @@
 </PageIntro>
 <Card size="xl" class="flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<Checkbox bind:checked={cfg.enabled}>Confessions on</Checkbox>
+		{#if !cfg.enabled}<P>Turn this on before members can submit a confession. Waiting notes can still be approved or rejected.</P>{/if}
 		<Field label="Review channel" hint="Each confession tags the mod role from Welcome. A channel you create here is hidden from members. The mod role and admin role from Welcome can read it.">
 			<ChannelSelect channels={data.bundle.channels} bind:value={cfg.reviewChannelId} />
 		</Field>

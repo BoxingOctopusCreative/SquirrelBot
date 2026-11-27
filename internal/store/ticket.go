@@ -16,6 +16,7 @@ const ticketColumns = `id, guild_id, number, opener_id, opener_name, subject, bo
 // TicketConfig is how one server runs support tickets.
 type TicketConfig struct {
 	GuildID        string `json:"guildId"`
+	Enabled        bool   `json:"enabled"`
 	PanelChannelID string `json:"panelChannelId"`
 	PanelMessageID string `json:"-"`
 	CategoryID     string `json:"categoryId"`
@@ -50,15 +51,15 @@ type Ticket struct {
 func (s *Store) GetTicketConfig(ctx context.Context, guildID string) (TicketConfig, error) {
 	var cfg TicketConfig
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, panel_channel_id, panel_message_id, category_id, support_role_id,
+		SELECT guild_id, enabled, panel_channel_id, panel_message_id, category_id, support_role_id,
 			log_channel_id, panel_title, panel_body
 		FROM ticket_configs WHERE guild_id = $1`, guildID).Scan(
-		&cfg.GuildID, &cfg.PanelChannelID, &cfg.PanelMessageID, &cfg.CategoryID, &cfg.SupportRoleID,
+		&cfg.GuildID, &cfg.Enabled, &cfg.PanelChannelID, &cfg.PanelMessageID, &cfg.CategoryID, &cfg.SupportRoleID,
 		&cfg.LogChannelID, &cfg.PanelTitle, &cfg.PanelBody,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return TicketConfig{
-			GuildID: guildID, PanelTitle: domain.DefaultTicketTitle, PanelBody: domain.DefaultTicketBody,
+			GuildID: guildID, Enabled: true, PanelTitle: domain.DefaultTicketTitle, PanelBody: domain.DefaultTicketBody,
 		}, nil
 	}
 	if err != nil {
@@ -76,10 +77,11 @@ func (s *Store) GetTicketConfig(ctx context.Context, guildID string) (TicketConf
 func (s *Store) SaveTicketConfig(ctx context.Context, cfg TicketConfig) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO ticket_configs (
-			guild_id, panel_channel_id, panel_message_id, category_id, support_role_id,
+			guild_id, enabled, panel_channel_id, panel_message_id, category_id, support_role_id,
 			log_channel_id, panel_title, panel_body
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (guild_id) DO UPDATE SET
+			enabled = EXCLUDED.enabled,
 			panel_channel_id = EXCLUDED.panel_channel_id,
 			panel_message_id = EXCLUDED.panel_message_id,
 			category_id = EXCLUDED.category_id,
@@ -87,7 +89,7 @@ func (s *Store) SaveTicketConfig(ctx context.Context, cfg TicketConfig) error {
 			log_channel_id = EXCLUDED.log_channel_id,
 			panel_title = EXCLUDED.panel_title,
 			panel_body = EXCLUDED.panel_body`,
-		cfg.GuildID, cfg.PanelChannelID, cfg.PanelMessageID, cfg.CategoryID, cfg.SupportRoleID,
+		cfg.GuildID, cfg.Enabled, cfg.PanelChannelID, cfg.PanelMessageID, cfg.CategoryID, cfg.SupportRoleID,
 		cfg.LogChannelID, cfg.PanelTitle, cfg.PanelBody,
 	)
 	return err

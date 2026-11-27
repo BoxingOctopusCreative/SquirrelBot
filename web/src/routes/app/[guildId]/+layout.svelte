@@ -69,7 +69,7 @@
 					<p class="px-2 pb-1 text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400">{group.title}</p>
 					<SidebarGroup class="space-y-0">
 						{#each group.items as [suffix, label] (suffix)}
-							<SidebarItem href={href(suffix)} {label} spanClass="" aClass="py-1!" active={path === href(suffix)} />
+							<SidebarItem href={href(suffix)} {label} spanClass="" aClass="px-2! py-0!" active={path === href(suffix)} />
 						{/each}
 					</SidebarGroup>
 				</div>

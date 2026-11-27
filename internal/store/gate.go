@@ -13,6 +13,7 @@ var ErrGateUnsaved = errors.New("Save the application before posting the message
 
 type RoleGate struct {
 	GuildID           string   `json:"guildId"`
+	Active            bool     `json:"active"`
 	Enabled           bool     `json:"enabled"`
 	RequiredRoleID    string   `json:"requiredRoleId"`
 	DeadlineSeconds   int      `json:"deadlineSeconds"`
@@ -31,15 +32,16 @@ func (s *Store) GetGate(ctx context.Context, guildID string) (RoleGate, error) {
 	var gate RoleGate
 	var raw []byte
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, enabled, required_role_id, deadline_seconds, warn_before_seconds,
+		SELECT guild_id, active, enabled, required_role_id, deadline_seconds, warn_before_seconds,
 		       kick_reason, dm_message, log_channel_id, exempt_role_ids, emoji, channel_id, message_id
 		FROM role_gates WHERE guild_id = $1`, guildID).Scan(
-		&gate.GuildID, &gate.Enabled, &gate.RequiredRoleID, &gate.DeadlineSeconds, &gate.WarnBeforeSeconds,
+		&gate.GuildID, &gate.Active, &gate.Enabled, &gate.RequiredRoleID, &gate.DeadlineSeconds, &gate.WarnBeforeSeconds,
 		&gate.KickReason, &gate.DMMessage, &gate.LogChannelID, &raw, &gate.Emoji, &gate.ChannelID, &gate.MessageID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RoleGate{
 			GuildID:           guildID,
+			Active:            true,
 			DeadlineSeconds:   86400,
 			WarnBeforeSeconds: 3600,
 			KickReason:        "Did not finish the server application in time",
@@ -84,10 +86,11 @@ func (s *Store) SaveGate(ctx context.Context, gate RoleGate) error {
 	defer tx.Rollback(ctx)
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO role_gates (
-			guild_id, enabled, required_role_id, deadline_seconds, warn_before_seconds,
+			guild_id, active, enabled, required_role_id, deadline_seconds, warn_before_seconds,
 			kick_reason, dm_message, log_channel_id, exempt_role_ids, emoji
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '')
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '')
 		ON CONFLICT (guild_id) DO UPDATE SET
+			active = EXCLUDED.active,
 			enabled = EXCLUDED.enabled,
 			required_role_id = EXCLUDED.required_role_id,
 			deadline_seconds = EXCLUDED.deadline_seconds,
@@ -97,7 +100,7 @@ func (s *Store) SaveGate(ctx context.Context, gate RoleGate) error {
 			log_channel_id = EXCLUDED.log_channel_id,
 			exempt_role_ids = EXCLUDED.exempt_role_ids,
 			emoji = ''`,
-		gate.GuildID, gate.Enabled, gate.RequiredRoleID, gate.DeadlineSeconds, gate.WarnBeforeSeconds,
+		gate.GuildID, gate.Active, gate.Enabled, gate.RequiredRoleID, gate.DeadlineSeconds, gate.WarnBeforeSeconds,
 		gate.KickReason, gate.DMMessage, gate.LogChannelID, encodeIDs(gate.ExemptRoleIDs),
 	); err != nil {
 		return err
@@ -227,7 +230,7 @@ func (s *Store) ClaimDueKicks(ctx context.Context, limit int) ([]DueGateMember, 
 		       rg.warn_before_seconds, rg.deadline_seconds
 		FROM gate_members gm
 		JOIN role_gates rg ON rg.guild_id = gm.guild_id
-		WHERE gm.status = 'pending' AND rg.enabled AND gm.deadline_at <= now()
+		WHERE gm.status = 'pending' AND rg.active AND rg.enabled AND gm.deadline_at <= now()
 		ORDER BY gm.deadline_at
 		FOR UPDATE OF gm SKIP LOCKED
 		LIMIT $1`, limit)
@@ -262,6 +265,7 @@ func (s *Store) DueWarnings(ctx context.Context, limit int) ([]DueGateMember, er
 		JOIN role_gates rg ON rg.guild_id = gm.guild_id
 		WHERE gm.status = 'pending'
 		  AND gm.warned_at IS NULL
+		  AND rg.active
 		  AND rg.enabled
 		  AND rg.warn_before_seconds > 0
 		  AND gm.deadline_at > now()

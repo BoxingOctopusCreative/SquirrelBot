@@ -19,10 +19,10 @@
 				<img src="/squirrelbot_brandkit_wide.svg" alt="SquirrelBot" class="-my-2.5 h-[calc(3.75rem+2px)] w-auto" />
 			</NavBrand>
 			<div class="flex flex-wrap items-center gap-2">
-				<Button href="/auth/discord/invite" color="alternative">Add a Server</Button>
 				{#if data.me.avatarUrl}<Avatar src={data.me.avatarUrl} alt="" size="sm" />{/if}
 				<span class="text-sm text-gray-600 dark:text-gray-300">{data.me.username}</span>
 				<ThemeToggle />
+				<Button href="/auth/discord/invite">Add a Server</Button>
 				<Button color="alternative" type="button" onclick={logout}>Sign Out</Button>
 			</div>
 		</Navbar>

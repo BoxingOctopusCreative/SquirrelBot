@@ -243,7 +243,7 @@ func TestDashboardJourney(t *testing.T) {
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	saved := asMap(t, body)
-	if saved["prefix"] != "?" || saved["welcomeMessage"] != "Hello {user}" || saved["leaveMessage"] != "Goodbye {username}" {
+	if saved["prefix"] != "?" || saved["welcomeMessage"] != "Hello {user}" || saved["leaveMessage"] != "Goodbye {username}" || saved["welcomeEnabled"] != true {
 		t.Fatalf("settings %s", body)
 	}
 
@@ -269,9 +269,22 @@ func TestDashboardJourney(t *testing.T) {
 		"memberJoin": true, "memberLeave": true, "memberBan": true,
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
-	if asMap(t, body)["messageEdit"] != false {
+	if asMap(t, body)["messageEdit"] != false || asMap(t, body)["enabled"] != true {
 		t.Fatalf("logging %s", body)
 	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/logging", map[string]any{
+		"enabled": false, "channelId": harness.GeneralChannelID, "messageDelete": true, "messageEdit": false,
+		"memberJoin": true, "memberLeave": true, "memberBan": true,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["enabled"] != false {
+		t.Fatalf("logging off %s", body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/logging", map[string]any{
+		"enabled": true, "channelId": harness.GeneralChannelID, "messageDelete": true, "messageEdit": false,
+		"memberJoin": true, "memberLeave": true, "memberBan": true,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
 
 	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/starboard", map[string]any{
 		"enabled": true, "emoji": "⭐", "threshold": 3, "ignoredChannelIds": []string{},
@@ -324,7 +337,7 @@ func TestDashboardJourney(t *testing.T) {
 		"reviewChannelId": harness.GeneralChannelID, "channelId": harness.AnnounceChannelID,
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
-	if asMap(t, body)["reviewChannelId"] != harness.GeneralChannelID || asMap(t, body)["channelId"] != harness.AnnounceChannelID {
+	if asMap(t, body)["reviewChannelId"] != harness.GeneralChannelID || asMap(t, body)["channelId"] != harness.AnnounceChannelID || asMap(t, body)["enabled"] != true {
 		t.Fatalf("confessions %s", body)
 	}
 
@@ -350,7 +363,7 @@ func TestDashboardJourney(t *testing.T) {
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	savedTickets := asMap(t, body)
-	if savedTickets["panelTitle"] != "Help" || savedTickets["categoryId"] != categoryID {
+	if savedTickets["panelTitle"] != "Help" || savedTickets["categoryId"] != categoryID || savedTickets["enabled"] != true {
 		t.Fatalf("tickets %s", body)
 	}
 	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/tickets", nil, stack.Cookie)
@@ -391,6 +404,29 @@ func TestDashboardJourney(t *testing.T) {
 	if status != http.StatusNoContent {
 		t.Fatalf("delete command %d", status)
 	}
+
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/announcements/enabled", map[string]any{}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/announcements/enabled", map[string]any{
+		"enabled": false,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["enabled"] != false {
+		t.Fatalf("announcements toggle %s", body)
+	}
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID, nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["guild"].(map[string]any)["announcementsEnabled"] != false {
+		t.Fatalf("guild announcements %s", body)
+	}
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/announcements", map[string]any{
+		"channelId": harness.AnnounceChannelID, "title": "Later", "body": "Not yet.",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/announcements/enabled", map[string]any{
+		"enabled": true,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
 
 	when := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/announcements", map[string]any{
@@ -462,6 +498,27 @@ func TestDashboardJourney(t *testing.T) {
 	if status != http.StatusNoContent {
 		t.Fatalf("revoke %d", status)
 	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/escalation-roles", map[string]any{
+		"enabled": false,
+		"roles": []any{map[string]any{
+			"roleId": harness.ModRoleID, "tier": "mod", "maxDurationSeconds": 86400,
+		}},
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["enabled"] != false {
+		t.Fatalf("firecall %s", body)
+	}
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/escalations", map[string]any{
+		"userId": harness.TargetUserID, "roleId": harness.ModRoleID, "duration": "4h", "reason": "Covering the night shift",
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/escalation-roles", map[string]any{
+		"enabled": true,
+		"roles": []any{map[string]any{
+			"roleId": harness.ModRoleID, "tier": "mod", "maxDurationSeconds": 86400,
+		}},
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
 	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/cases", nil, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	if !strings.Contains(string(body), "escalate") || !strings.Contains(string(body), harness.TargetName) {
@@ -477,9 +534,31 @@ func TestDashboardJourney(t *testing.T) {
 		"logChannelId":  harness.GeneralChannelID,
 	}, stack.Cookie)
 	must(t, status, body, http.StatusOK)
-	if asMap(t, body)["enabled"] != true {
+	if asMap(t, body)["enabled"] != true || asMap(t, body)["active"] != true {
 		t.Fatalf("gate %s", body)
 	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/gate", map[string]any{
+		"active": false, "enabled": true, "deadlineSeconds": 86400, "warnBeforeSeconds": 3600,
+		"kickReason":    "Did not finish the server application in time",
+		"dmMessage":     "Welcome to {server}. You have {duration}.",
+		"questions":     []string{"Where did you find us?"},
+		"exemptRoleIds": []string{harness.ModRoleID},
+		"logChannelId":  harness.GeneralChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	status, body = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/gate/panel", map[string]any{
+		"channelId": harness.GeneralChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusBadRequest)
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/gate", map[string]any{
+		"active": true, "enabled": true, "deadlineSeconds": 86400, "warnBeforeSeconds": 3600,
+		"kickReason":    "Did not finish the server application in time",
+		"dmMessage":     "Welcome to {server}. You have {duration}.",
+		"questions":     []string{"Where did you find us?"},
+		"exemptRoleIds": []string{harness.ModRoleID},
+		"logChannelId":  harness.GeneralChannelID,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
 	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/gate/members", nil, stack.Cookie)
 	must(t, status, body, http.StatusOK)
 	status, _ = call(t, http.MethodPost, "/api/guilds/"+harness.GuildID+"/gate/panel", map[string]any{
@@ -505,6 +584,17 @@ func TestDashboardJourney(t *testing.T) {
 		t.Fatalf("role %s", body)
 	}
 
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/reaction-roles/enabled", map[string]any{
+		"enabled": false,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["enabled"] != false {
+		t.Fatalf("reactions off %s", body)
+	}
+	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/reaction-roles/enabled", map[string]any{
+		"enabled": true,
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
 	status, body = call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/reaction-roles/channel", map[string]any{
 		"channelId": harness.GeneralChannelID,
 	}, stack.Cookie)

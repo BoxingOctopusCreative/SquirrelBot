@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Card, Input, P, Textarea } from 'flowbite-svelte';
+	import { Button, Card, Checkbox, Input, P, Textarea } from 'flowbite-svelte';
 	import { untrack } from 'svelte';
 	import { sendJSON } from '#lib/api';
 	import ChannelSelect from '#lib/ChannelSelect.svelte';
@@ -27,7 +27,8 @@
 				leaveChannelId: guild.leaveChannelId,
 				leaveMessage: guild.leaveMessage,
 				autoroleId: guild.autoroleId,
-				prefix: guild.prefix
+				prefix: guild.prefix,
+				welcomeEnabled: guild.welcomeEnabled
 			});
 			notice = 'Saved. Welcome and leave messages updated.';
 		} catch (err) {
@@ -44,6 +45,8 @@
 </PageIntro>
 <Card size="xl" class="flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<Checkbox bind:checked={guild.welcomeEnabled}>Welcome on</Checkbox>
+		{#if !guild.welcomeEnabled}<P>Turn this on to send welcome and leave messages and to give the auto role. Mod roles, the mod log, and the command prefix stay in use.</P>{/if}
 		<div class="grid gap-4 md:grid-cols-2">
 			<Field label="Mod role"><RoleSelect roles={data.bundle.roles} bind:value={guild.modRoleId} /></Field>
 			<Field label="Admin role"><RoleSelect roles={data.bundle.roles} bind:value={guild.adminRoleId} /></Field>

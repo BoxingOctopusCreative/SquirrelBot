@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { A, Button, Card, Heading, Hr, Input, P, Textarea } from 'flowbite-svelte';
+	import { A, Button, Card, Checkbox, Heading, Hr, Input, P, Textarea } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
@@ -20,6 +20,8 @@
 	let schedule = $state('');
 	let notice = $state('');
 	let busy = $state(false);
+	let announcementsOn = $state(untrack(() => data.bundle.guild.announcementsEnabled));
+	let toggleNotice = $state('');
 
 	let templateID = $state<number | null>(null);
 	let templateName = $state('');
@@ -142,6 +144,19 @@
 		}
 	}
 
+	async function saveToggle() {
+		toggleNotice = '';
+		try {
+			await sendJSON(`/api/guilds/${data.bundle.guild.id}/announcements/enabled`, 'PUT', {
+				enabled: announcementsOn
+			});
+			toggleNotice = 'Saved. Announcements updated.';
+			await refreshAll();
+		} catch (err) {
+			toggleNotice = err instanceof Error ? err.message : 'Could not save.';
+		}
+	}
+
 	async function deleteTemplate(id: number) {
 		templateNotice = '';
 		try {
@@ -158,6 +173,15 @@
 <PageIntro kicker="Mod team" title="Announcements">
 	<P>Posts go out as an embed from SquirrelBot, with your name in the footer.</P>
 </PageIntro>
+
+<Card size="xl" class="mb-6 flex-col gap-4 p-5">
+	<Checkbox bind:checked={announcementsOn}>Announcements on</Checkbox>
+	{#if !announcementsOn}<P>Turn this on before a message can be sent or scheduled. Messages already on the calendar stay there.</P>{/if}
+	<div class="flex flex-wrap items-center gap-3">
+		<Button type="button" onclick={saveToggle}>Save</Button>
+		<Notice text={toggleNotice} />
+	</div>
+</Card>
 
 <Card size="xl" class="mb-6 flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); publish(); }}>

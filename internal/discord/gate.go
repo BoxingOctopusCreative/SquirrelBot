@@ -59,6 +59,9 @@ func (b *Bot) PostGatePanel(guildID, channelID string) error {
 	if err != nil {
 		return errors.New("I could not load the application.")
 	}
+	if !gate.Active {
+		return errors.New("Turn the server application on in the dashboard.")
+	}
 	content := domain.GatePanelText()
 	components := gatePanelComponents()
 	messageID := ""
@@ -140,7 +143,11 @@ func (b *Bot) verifyMember(s *discordgo.Session, i *discordgo.InteractionCreate)
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	gate, err := b.store.GetGate(ctx, i.GuildID)
-	if err != nil || !gate.Enabled {
+	if err != nil || !gate.Active {
+		_ = respondEphemeral(s, i, "The server application is off. Turn it on in the dashboard.")
+		return
+	}
+	if !gate.Enabled {
 		_ = respondEphemeral(s, i, "The server application is not set up.")
 		return
 	}
@@ -186,7 +193,11 @@ func (b *Bot) submitVerification(s *discordgo.Session, i *discordgo.InteractionC
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	gate, err := b.store.GetGate(ctx, i.GuildID)
-	if err != nil || !gate.Enabled {
+	if err != nil || !gate.Active {
+		editReply(s, i, "The server application is off. Turn it on in the dashboard.")
+		return
+	}
+	if !gate.Enabled {
 		editReply(s, i, "The server application is not set up.")
 		return
 	}
@@ -256,7 +267,7 @@ func (b *Bot) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 		b.log.Error("join guild", "guild", event.GuildID, "err", err)
 		return
 	}
-	if domain.ValidSnowflake(guild.AutoroleID) && !memberHas(event.Member, guild.AutoroleID) {
+	if guild.WelcomeEnabled && domain.ValidSnowflake(guild.AutoroleID) && !memberHas(event.Member, guild.AutoroleID) {
 		if err := b.canAssign(event.GuildID, guild.AutoroleID); err == nil {
 			if err := s.GuildMemberRoleAdd(event.GuildID, event.User.ID, guild.AutoroleID); err != nil {
 				b.log.Warn("autorole", "guild", event.GuildID, "err", err)
@@ -266,7 +277,7 @@ func (b *Bot) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 		}
 	}
 	b.trackGate(event)
-	if guild.WelcomeChannelID != "" && guild.WelcomeMessage != "" {
+	if guild.WelcomeEnabled && guild.WelcomeChannelID != "" && guild.WelcomeMessage != "" {
 		count := 0
 		if g, err := s.Guild(event.GuildID); err == nil {
 			count = g.MemberCount
@@ -283,7 +294,7 @@ func (b *Bot) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 		})
 	}
 	logs, _ := b.store.GetLogConfig(ctx, event.GuildID)
-	if logs.MemberJoin {
+	if logs.Enabled && logs.MemberJoin {
 		channel := logs.ChannelID
 		if channel == "" {
 			channel = guild.ModLogChannelID
@@ -300,7 +311,7 @@ func (b *Bot) trackGate(event *discordgo.GuildMemberAdd) {
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	gate, err := b.store.GetGate(ctx, event.GuildID)
-	if err != nil || !gate.Enabled {
+	if err != nil || !gate.Active || !gate.Enabled {
 		return
 	}
 	status := "pending"
@@ -340,7 +351,7 @@ func (b *Bot) onMemberUpdate(s *discordgo.Session, event *discordgo.GuildMemberU
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	gate, err := b.store.GetGate(ctx, event.GuildID)
-	if err != nil || !gate.Enabled {
+	if err != nil || !gate.Active || !gate.Enabled {
 		return
 	}
 	if event.Member != nil && overlaps(event.Member.Roles, gate.ExemptRoleIDs) {
@@ -362,7 +373,7 @@ func (b *Bot) onLeave(s *discordgo.Session, event *discordgo.GuildMemberRemove) 
 		b.postLeave(s, guild, event)
 	}
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
-	if err != nil || !logs.MemberLeave {
+	if err != nil || !logs.Enabled || !logs.MemberLeave {
 		return
 	}
 	channel := logs.ChannelID
@@ -377,7 +388,7 @@ func (b *Bot) onLeave(s *discordgo.Session, event *discordgo.GuildMemberRemove) 
 }
 
 func (b *Bot) postLeave(s *discordgo.Session, guild store.Guild, event *discordgo.GuildMemberRemove) {
-	if event.User.Bot || guild.LeaveChannelID == "" || guild.LeaveMessage == "" {
+	if !guild.WelcomeEnabled || event.User.Bot || guild.LeaveChannelID == "" || guild.LeaveMessage == "" {
 		return
 	}
 	count := 0

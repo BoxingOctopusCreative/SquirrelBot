@@ -15,7 +15,7 @@ func (b *Bot) onDelete(s *discordgo.Session, event *discordgo.MessageDelete) {
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
-	if err != nil || !logs.MessageDelete {
+	if err != nil || !logs.Enabled || !logs.MessageDelete {
 		return
 	}
 	channel := b.logChannel(ctx, event.GuildID, logs.ChannelID)
@@ -61,7 +61,7 @@ func (b *Bot) onEdit(s *discordgo.Session, event *discordgo.MessageUpdate) {
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
-	if err != nil || !logs.MessageEdit {
+	if err != nil || !logs.Enabled || !logs.MessageEdit {
 		return
 	}
 	author := "Someone"
@@ -87,7 +87,7 @@ func (b *Bot) onBulkDelete(s *discordgo.Session, event *discordgo.MessageDeleteB
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
-	if err != nil || !logs.MessageDelete {
+	if err != nil || !logs.Enabled || !logs.MessageDelete {
 		return
 	}
 	b.sendLog(b.logChannel(ctx, event.GuildID, logs.ChannelID), &discordgo.MessageEmbed{
@@ -104,7 +104,7 @@ func (b *Bot) onBan(s *discordgo.Session, event *discordgo.GuildBanAdd) {
 	ctx, cancel := contextTimeout()
 	defer cancel()
 	logs, err := b.store.GetLogConfig(ctx, event.GuildID)
-	if err != nil || !logs.MemberBan {
+	if err != nil || !logs.Enabled || !logs.MemberBan {
 		return
 	}
 	b.sendLog(b.logChannel(ctx, event.GuildID, logs.ChannelID), &discordgo.MessageEmbed{

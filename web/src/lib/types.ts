@@ -24,6 +24,10 @@ export type Guild = {
 	leaveMessage: string;
 	autoroleId: string;
 	prefix: string;
+	welcomeEnabled: boolean;
+	firecallEnabled: boolean;
+	announcementsEnabled: boolean;
+	reactionsEnabled: boolean;
 	reactionChannelId: string;
 	reactionMessageId: string;
 	updatedAt: string;
@@ -42,6 +46,7 @@ export type Role = { id: string; name: string; position: number; managed: boolea
 
 export type Gate = {
 	guildId: string;
+	active: boolean;
 	enabled: boolean;
 	requiredRoleId: string;
 	deadlineSeconds: number;
@@ -73,6 +78,7 @@ export type Automod = {
 
 export type LogConfig = {
 	guildId: string;
+	enabled: boolean;
 	channelId: string;
 	messageDelete: boolean;
 	messageEdit: boolean;
@@ -90,12 +96,14 @@ export type EscalationRole = {
 
 export type ConfessionConfig = {
 	guildId: string;
+	enabled: boolean;
 	reviewChannelId: string;
 	channelId: string;
 };
 
 export type TicketConfig = {
 	guildId: string;
+	enabled: boolean;
 	panelChannelId: string;
 	categoryId: string;
 	supportRoleId: string;

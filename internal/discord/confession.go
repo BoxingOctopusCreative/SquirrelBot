@@ -42,6 +42,10 @@ func (b *Bot) beginConfession(s *discordgo.Session, i *discordgo.InteractionCrea
 		_ = respondEphemeral(s, i, "I could not load confessions for this server.")
 		return false
 	}
+	if !cfg.Enabled {
+		_ = respondEphemeral(s, i, "Confessions are off. Turn them on in the dashboard.")
+		return false
+	}
 	if !domain.ValidSnowflake(cfg.ReviewChannelID) {
 		_ = respondEphemeral(s, i, "A moderator has not chosen a review channel yet.")
 		return false
