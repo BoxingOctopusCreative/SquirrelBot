@@ -34,6 +34,8 @@
 </PageIntro>
 <Card size="xl" class="flex-col p-5">
 	<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); save(); }}>
+		<Checkbox bind:checked={logging.enabled}>Logging on</Checkbox>
+		{#if !logging.enabled}<P>Turn this on to record message and member events.</P>{/if}
 		<Field label="Log channel"><ChannelSelect channels={data.bundle.channels} bind:value={logging.channelId} /></Field>
 		<Checkbox bind:checked={logging.messageDelete}>Message deletes</Checkbox>
 		<Checkbox bind:checked={logging.messageEdit}>Message edits</Checkbox>

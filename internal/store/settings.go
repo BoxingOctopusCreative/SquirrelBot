@@ -88,6 +88,7 @@ func (s *Store) SaveAutomod(ctx context.Context, cfg Automod) error {
 
 type LogConfig struct {
 	GuildID       string `json:"guildId"`
+	Enabled       bool   `json:"enabled"`
 	ChannelID     string `json:"channelId"`
 	MessageDelete bool   `json:"messageDelete"`
 	MessageEdit   bool   `json:"messageEdit"`
@@ -99,13 +100,13 @@ type LogConfig struct {
 func (s *Store) GetLogConfig(ctx context.Context, guildID string) (LogConfig, error) {
 	var cfg LogConfig
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, channel_id, message_delete, message_edit, member_join, member_leave, member_ban
+		SELECT guild_id, enabled, channel_id, message_delete, message_edit, member_join, member_leave, member_ban
 		FROM log_configs WHERE guild_id = $1`, guildID).Scan(
-		&cfg.GuildID, &cfg.ChannelID, &cfg.MessageDelete, &cfg.MessageEdit, &cfg.MemberJoin, &cfg.MemberLeave, &cfg.MemberBan,
+		&cfg.GuildID, &cfg.Enabled, &cfg.ChannelID, &cfg.MessageDelete, &cfg.MessageEdit, &cfg.MemberJoin, &cfg.MemberLeave, &cfg.MemberBan,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return LogConfig{
-			GuildID: guildID, MessageDelete: true, MessageEdit: true,
+			GuildID: guildID, Enabled: true, MessageDelete: true, MessageEdit: true,
 			MemberJoin: true, MemberLeave: true, MemberBan: true,
 		}, nil
 	}
@@ -115,16 +116,17 @@ func (s *Store) GetLogConfig(ctx context.Context, guildID string) (LogConfig, er
 func (s *Store) SaveLogConfig(ctx context.Context, cfg LogConfig) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO log_configs (
-			guild_id, channel_id, message_delete, message_edit, member_join, member_leave, member_ban
-		) VALUES ($1,$2,$3,$4,$5,$6,$7)
+			guild_id, enabled, channel_id, message_delete, message_edit, member_join, member_leave, member_ban
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
 		ON CONFLICT (guild_id) DO UPDATE SET
+			enabled = EXCLUDED.enabled,
 			channel_id = EXCLUDED.channel_id,
 			message_delete = EXCLUDED.message_delete,
 			message_edit = EXCLUDED.message_edit,
 			member_join = EXCLUDED.member_join,
 			member_leave = EXCLUDED.member_leave,
 			member_ban = EXCLUDED.member_ban`,
-		cfg.GuildID, cfg.ChannelID, cfg.MessageDelete, cfg.MessageEdit, cfg.MemberJoin, cfg.MemberLeave, cfg.MemberBan,
+		cfg.GuildID, cfg.Enabled, cfg.ChannelID, cfg.MessageDelete, cfg.MessageEdit, cfg.MemberJoin, cfg.MemberLeave, cfg.MemberBan,
 	)
 	return err
 }

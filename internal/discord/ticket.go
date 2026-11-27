@@ -126,6 +126,10 @@ func (b *Bot) openTicketForm(s *discordgo.Session, i *discordgo.InteractionCreat
 		_ = respondEphemeral(s, i, err.Error())
 		return
 	}
+	if !cfg.Enabled {
+		_ = respondEphemeral(s, i, "Support tickets are off. Turn them on in the dashboard.")
+		return
+	}
 	b.rememberTicketPanel(ctx, i, cfg)
 	existing, err := b.store.OpenTicketFor(ctx, i.GuildID, i.Member.User.ID)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {

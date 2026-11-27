@@ -102,8 +102,10 @@ func (s *Store) ClaimDueAnnouncements(ctx context.Context, limit int) ([]Announc
 	rows, err := s.pool.Query(ctx, `
 		UPDATE announcements SET status = 'sending'
 		WHERE id IN (
-			SELECT id FROM announcements
-			WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= now()
+			SELECT announcements.id FROM announcements
+			JOIN guilds ON guilds.id = announcements.guild_id
+			WHERE announcements.status = 'scheduled' AND announcements.scheduled_at IS NOT NULL
+				AND announcements.scheduled_at <= now() AND guilds.announcements_enabled
 			ORDER BY scheduled_at
 			FOR UPDATE SKIP LOCKED
 			LIMIT $1

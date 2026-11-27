@@ -48,9 +48,29 @@ test.describe('dashboard', () => {
 
 	test('lists the server and opens every section', async ({ page }) => {
 		await page.goto('/app');
-		await expect(page.getByRole('link', { name: 'Add a Server' })).toHaveAttribute('href', '/auth/discord/invite');
+		const addServer = page.getByRole('link', { name: 'Add a Server' });
+		await expect(addServer).toHaveAttribute('href', '/auth/discord/invite');
 		await expect(page.getByRole('link', { name: 'Canopy' })).toBeVisible();
 		await expect(page.getByText('Acorn')).toBeVisible();
+		const username = await page.getByText('Acorn', { exact: true }).boundingBox();
+		const addBox = await addServer.boundingBox();
+		const themeButton = page.getByRole('button', { name: /Use (Light|Dark) Mode/ });
+		const theme = await themeButton.boundingBox();
+		expect(username && addBox && theme).toBeTruthy();
+		expect(username!.x).toBeLessThan(theme!.x);
+		expect(theme!.x + theme!.width).toBeLessThanOrEqual(addBox!.x + 8);
+		const before = await themeButton.evaluate((el) => ({
+			bg: getComputedStyle(el).backgroundColor,
+			sun: el.querySelector('circle') !== null
+		}));
+		await themeButton.click();
+		const after = await themeButton.evaluate((el) => ({
+			bg: getComputedStyle(el).backgroundColor,
+			sun: el.querySelector('circle') !== null
+		}));
+		expect(after.bg).not.toBe(before.bg);
+		expect(after.sun).toBe(!before.sun);
+		await themeButton.click();
 		await expect(page.getByText(/^Version \S+$/)).toBeVisible();
 		await page.getByRole('link', { name: 'Canopy' }).click();
 		await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
@@ -73,6 +93,11 @@ test.describe('dashboard', () => {
 			['Commands', 'Commands']
 		];
 		const nav = page.getByRole('navigation', { name: 'Server sections' });
+		const overview = await nav.getByRole('link', { name: 'Overview' }).boundingBox();
+		const profile = await nav.getByRole('link', { name: 'Profile' }).boundingBox();
+		expect(overview).toBeTruthy();
+		expect(profile).toBeTruthy();
+		expect(profile!.y - (overview!.y + overview!.height)).toBeLessThan(2);
 		for (const [link, heading] of sections) {
 			await nav.getByRole('link', { name: link }).click();
 			await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
@@ -119,7 +144,12 @@ test.describe('dashboard', () => {
 		await page.getByLabel('Leave channel').selectOption({ label: '#announcements' });
 		await page.getByLabel('Leave message').fill('Goodbye {username}');
 		await page.getByLabel('Custom command prefix').fill('?');
-		await page.getByRole('button', { name: 'Save Welcome' }).click();
+		await expect(page.getByLabel('Welcome on')).toBeChecked();
+		const saveWelcome = page.getByRole('button', { name: 'Save Welcome' });
+		const addServer = page.getByRole('link', { name: 'Add a Server' });
+		const saveColor = await saveWelcome.evaluate((el) => getComputedStyle(el).backgroundColor);
+		await expect(addServer).toHaveCSS('background-color', saveColor);
+		await saveWelcome.click();
 		await expect(page.getByText('Saved.')).toBeVisible();
 		await page.reload();
 		await expect(page.getByLabel('Custom command prefix')).toHaveValue('?');
@@ -143,8 +173,22 @@ test.describe('dashboard', () => {
 		await page.getByPlaceholder('Channel name').fill('mod-logs');
 		await page.getByRole('button', { name: 'Create Channel' }).click();
 		await expect(page.getByText(/Created #mod-logs/)).toBeVisible();
+		await expect(page.getByLabel('Logging on')).toBeChecked();
 		await page.getByRole('button', { name: 'Save Logging' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
+		await page.getByLabel('Logging on').uncheck();
+		await Promise.all([
+			page.waitForResponse((res) => res.url().includes('/logging') && res.request().method() === 'PUT' && res.ok()),
+			page.getByRole('button', { name: 'Save Logging' }).click()
+		]);
+		await page.reload();
+		await expect(page.getByLabel('Logging on')).not.toBeChecked();
+		await expect(page.getByText('Turn this on to record message and member events.')).toBeVisible();
+		await page.getByLabel('Logging on').check();
+		await Promise.all([
+			page.waitForResponse((res) => res.url().includes('/logging') && res.request().method() === 'PUT' && res.ok()),
+			page.getByRole('button', { name: 'Save Logging' }).click()
+		]);
 	});
 
 	test('saves confession channels', async ({ page }) => {
@@ -157,6 +201,7 @@ test.describe('dashboard', () => {
 		await names.nth(1).fill('confessions');
 		await page.getByRole('button', { name: 'Create Channel' }).nth(1).click();
 		await expect(page.getByText(/Created #confessions/)).toBeVisible();
+		await expect(page.getByLabel('Confessions on')).toBeChecked();
 		await page.getByRole('button', { name: 'Save Confessions' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
 		await page.reload();
@@ -178,6 +223,7 @@ test.describe('dashboard', () => {
 		await expect(page.getByText(/Created #ticket-logs/)).toBeVisible();
 		await expect(panel.locator('option:checked')).toHaveText('#general');
 		await page.getByLabel('Support role').selectOption({ label: 'Mods' });
+		await expect(page.getByLabel('Support tickets on')).toBeChecked();
 		await page.getByRole('button', { name: 'Save and Post the Panel' }).click();
 		await expect(page.getByText('Message posted.')).toBeVisible();
 		await page.reload();
@@ -223,6 +269,15 @@ test.describe('dashboard', () => {
 	test('sends an announcement and fills a template', async ({ page }) => {
 		await openGuild(page);
 		await page.getByRole('link', { name: 'Announcements' }).click();
+		await expect(page.getByLabel('Announcements on')).toBeChecked();
+		await page.getByLabel('Announcements on').uncheck();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByText('Saved. Announcements updated.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByLabel('Announcements on')).not.toBeChecked();
+		await page.getByLabel('Announcements on').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByText('Saved. Announcements updated.')).toBeVisible();
 		const publish = page.locator('form').first();
 		await publish.getByLabel('Title').fill('Canopy night');
 		await publish.getByLabel('Body').fill('The canopy is open.');
@@ -247,6 +302,7 @@ test.describe('dashboard', () => {
 		await openGuild(page);
 		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Admin Firecall Access' }).click();
 		const allow = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Allowlist' }) });
+		await expect(allow.getByLabel('Admin firecall on')).toBeChecked();
 		await allow.getByLabel('Role').selectOption({ label: 'Mods' });
 		await allow.getByRole('button', { name: 'Add Role' }).click();
 		await allow.getByRole('button', { name: 'Save Allowlist' }).click();
@@ -267,6 +323,7 @@ test.describe('dashboard', () => {
 	test('saves the application and posts the message', async ({ page }) => {
 		await openGuild(page);
 		await page.getByRole('link', { name: 'Server Application' }).click();
+		await expect(page.getByLabel('Server application on')).toBeChecked();
 		await page.getByLabel('Kick people who miss the deadline').check();
 		await page.getByRole('button', { name: 'Add Question' }).click();
 		await page.getByPlaceholder('Question').fill('Where did you find us?');
@@ -279,6 +336,15 @@ test.describe('dashboard', () => {
 	test('adds a reaction role', async ({ page }) => {
 		await openGuild(page);
 		await page.getByRole('link', { name: 'Reaction Roles' }).click();
+		await expect(page.getByLabel('Reaction roles on')).toBeChecked();
+		await page.getByLabel('Reaction roles on').uncheck();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByText('Saved. Reaction roles updated.')).toBeVisible();
+		await page.reload();
+		await expect(page.getByLabel('Reaction roles on')).not.toBeChecked();
+		await page.getByLabel('Reaction roles on').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByText('Saved. Reaction roles updated.')).toBeVisible();
 		await page.getByPlaceholder('Channel name').fill('pick-roles');
 		await page.getByRole('button', { name: 'Create Channel' }).click();
 		await expect(page.getByText(/Created #pick-roles/)).toBeVisible();

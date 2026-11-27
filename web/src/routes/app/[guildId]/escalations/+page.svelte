@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Card, Heading, Input, P } from 'flowbite-svelte';
+	import { Button, Card, Checkbox, Heading, Input, P } from 'flowbite-svelte';
 	import { refreshAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { sendJSON, when } from '#lib/api';
@@ -14,6 +14,7 @@
 
 	let { data }: { data: { bundle: Bundle; escalations: Escalation[] } } = $props();
 	let allow = $state<EscalationRole[]>(untrack(() => data.bundle.escalationRoles.map((role) => ({ ...role }))));
+	let firecallOn = $state(untrack(() => data.bundle.guild.firecallEnabled));
 	let roleId = $state('');
 	let tier = $state('mod');
 	let hours = $state(24);
@@ -50,7 +51,7 @@
 		busy = true;
 		notice = '';
 		try {
-			await sendJSON(`/api/guilds/${data.bundle.guild.id}/escalation-roles`, 'PUT', { roles: allow });
+			await sendJSON(`/api/guilds/${data.bundle.guild.id}/escalation-roles`, 'PUT', { roles: allow, enabled: firecallOn });
 			notice = 'Allowlist saved.';
 			await refreshAll();
 		} catch (err) {
@@ -104,6 +105,8 @@
 <section>
 <Card size="xl" class="mb-6 flex-col gap-4 p-5">
 	<Heading tag="h2" class="font-display text-xl font-semibold">Allowlist</Heading>
+	<Checkbox bind:checked={firecallOn}>Admin firecall on</Checkbox>
+	{#if !firecallOn}<P>Turn this on before staff can grant a temporary role. Grants that are already running still end on time.</P>{/if}
 	<div class="grid gap-4 md:grid-cols-2">
 		<Field label="Role"><RoleSelect roles={data.bundle.roles} bind:value={roleId} allowEmpty={false} /></Field>
 		<Field label="Tier">

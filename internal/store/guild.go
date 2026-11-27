@@ -25,21 +25,25 @@ func (s *Store) Ping(ctx context.Context) error {
 }
 
 type Guild struct {
-	ID                string    `json:"id"`
-	Name              string    `json:"name"`
-	Icon              string    `json:"icon"`
-	ModLogChannelID   string    `json:"modLogChannelId"`
-	ModRoleID         string    `json:"modRoleId"`
-	AdminRoleID       string    `json:"adminRoleId"`
-	WelcomeChannelID  string    `json:"welcomeChannelId"`
-	WelcomeMessage    string    `json:"welcomeMessage"`
-	LeaveChannelID    string    `json:"leaveChannelId"`
-	LeaveMessage      string    `json:"leaveMessage"`
-	AutoroleID        string    `json:"autoroleId"`
-	Prefix            string    `json:"prefix"`
-	ReactionChannelID string    `json:"reactionChannelId"`
-	ReactionMessageID string    `json:"reactionMessageId"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	ID                   string    `json:"id"`
+	Name                 string    `json:"name"`
+	Icon                 string    `json:"icon"`
+	ModLogChannelID      string    `json:"modLogChannelId"`
+	ModRoleID            string    `json:"modRoleId"`
+	AdminRoleID          string    `json:"adminRoleId"`
+	WelcomeChannelID     string    `json:"welcomeChannelId"`
+	WelcomeMessage       string    `json:"welcomeMessage"`
+	LeaveChannelID       string    `json:"leaveChannelId"`
+	LeaveMessage         string    `json:"leaveMessage"`
+	AutoroleID           string    `json:"autoroleId"`
+	Prefix               string    `json:"prefix"`
+	WelcomeEnabled       bool      `json:"welcomeEnabled"`
+	FirecallEnabled      bool      `json:"firecallEnabled"`
+	AnnouncementsEnabled bool      `json:"announcementsEnabled"`
+	ReactionsEnabled     bool      `json:"reactionsEnabled"`
+	ReactionChannelID    string    `json:"reactionChannelId"`
+	ReactionMessageID    string    `json:"reactionMessageId"`
+	UpdatedAt            time.Time `json:"updatedAt"`
 }
 
 func (s *Store) EnsureGuild(ctx context.Context, id, name, icon string) error {
@@ -58,10 +62,12 @@ func (s *Store) GetGuild(ctx context.Context, id string) (Guild, error) {
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, name, icon, mod_log_channel_id, mod_role_id, admin_role_id,
 		       welcome_channel_id, welcome_message, leave_channel_id, leave_message,
-		       autorole_id, prefix, reaction_channel_id, reaction_message_id, updated_at
+		       autorole_id, prefix, welcome_enabled, firecall_enabled, announcements_enabled,
+		       reactions_enabled, reaction_channel_id, reaction_message_id, updated_at
 		FROM guilds WHERE id = $1`, id).Scan(
 		&g.ID, &g.Name, &g.Icon, &g.ModLogChannelID, &g.ModRoleID, &g.AdminRoleID,
 		&g.WelcomeChannelID, &g.WelcomeMessage, &g.LeaveChannelID, &g.LeaveMessage, &g.AutoroleID, &g.Prefix,
+		&g.WelcomeEnabled, &g.FirecallEnabled, &g.AnnouncementsEnabled, &g.ReactionsEnabled,
 		&g.ReactionChannelID, &g.ReactionMessageID, &g.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -108,10 +114,12 @@ func (s *Store) UpdateGuildSettings(ctx context.Context, g Guild) error {
 			leave_message = $8,
 			autorole_id = $9,
 			prefix = $10,
+			welcome_enabled = $11,
 			updated_at = now()
 		WHERE id = $1`,
 		g.ID, g.ModLogChannelID, g.ModRoleID, g.AdminRoleID,
 		g.WelcomeChannelID, g.WelcomeMessage, g.LeaveChannelID, g.LeaveMessage, g.AutoroleID, g.Prefix,
+		g.WelcomeEnabled,
 	)
 	if err != nil {
 		return err
@@ -120,6 +128,29 @@ func (s *Store) UpdateGuildSettings(ctx context.Context, g Guild) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (s *Store) setGuildBool(ctx context.Context, query, guildID string, on bool) error {
+	tag, err := s.pool.Exec(ctx, query, guildID, on)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) SetFirecallEnabled(ctx context.Context, guildID string, on bool) error {
+	return s.setGuildBool(ctx, `UPDATE guilds SET firecall_enabled = $2, updated_at = now() WHERE id = $1`, guildID, on)
+}
+
+func (s *Store) SetAnnouncementsEnabled(ctx context.Context, guildID string, on bool) error {
+	return s.setGuildBool(ctx, `UPDATE guilds SET announcements_enabled = $2, updated_at = now() WHERE id = $1`, guildID, on)
+}
+
+func (s *Store) SetReactionsEnabled(ctx context.Context, guildID string, on bool) error {
+	return s.setGuildBool(ctx, `UPDATE guilds SET reactions_enabled = $2, updated_at = now() WHERE id = $1`, guildID, on)
 }
 
 type Counts struct {

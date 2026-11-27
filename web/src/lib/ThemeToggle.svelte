@@ -45,11 +45,14 @@
 	color="alternative"
 	aria-pressed={dark}
 	aria-label={dark ? 'Use Light Mode' : 'Use Dark Mode'}
+	class={dark
+		? 'border-[#d08a4a]! bg-[#141821]! text-[#f6eadc]! hover:bg-[#1b2130]!'
+		: 'border-[#d08a4a]! bg-[#f6eadc]! text-[#7a4518]! hover:bg-[#ecd3b6]!'}
 	onclick={toggle}
 >
 	{#if dark}
-		<Sun size={20} aria-hidden="true" />
-	{:else}
 		<Moon size={20} aria-hidden="true" />
+	{:else}
+		<Sun size={20} aria-hidden="true" />
 	{/if}
 </Button>

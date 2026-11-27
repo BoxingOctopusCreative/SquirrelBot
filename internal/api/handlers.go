@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strconv"
@@ -204,6 +205,11 @@ func (s *Server) patchSettings(c *fiber.Ctx) error {
 	if len(body.LeaveMessage) > domain.MaxWelcome {
 		return fail(c, fiber.StatusBadRequest, "Leave message is too long.")
 	}
+	existing, err := s.store.GetGuild(c.UserContext(), body.ID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save settings.")
+	}
+	body.WelcomeEnabled = flagOr(c.Body(), "welcomeEnabled", existing.WelcomeEnabled)
 	if err := s.store.UpdateGuildSettings(c.UserContext(), body); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save settings.")
 	}
@@ -252,6 +258,9 @@ func (s *Server) createAnnouncement(c *fiber.Ctx) error {
 	}
 	if err := domain.ValidateAnnouncement(body.Title, body.Body, when, now); err != nil {
 		return fail(c, fiber.StatusBadRequest, err.Error())
+	}
+	if stop, err := s.rejectIfAnnouncementsOff(c); stop {
+		return err
 	}
 	session := c.Locals("session").(store.Session)
 	item := store.Announcement{
@@ -307,6 +316,9 @@ func (s *Server) sendAnnouncement(c *fiber.Ctx) error {
 	if item.Status == "sent" {
 		return fail(c, fiber.StatusConflict, "That announcement was already sent.")
 	}
+	if stop, err := s.rejectIfAnnouncementsOff(c); stop {
+		return err
+	}
 	if err := s.requireBot(); err != nil {
 		return fail(c, fiber.StatusServiceUnavailable, err.Error())
 	}
@@ -350,11 +362,19 @@ func (s *Server) putEscalationRoles(c *fiber.Ctx) error {
 	if err := s.store.ReplaceEscalationRoles(c.UserContext(), c.Params("guildID"), body.Roles); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save the allowlist.")
 	}
+	guild, err := s.store.GetGuild(c.UserContext(), c.Params("guildID"))
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save the allowlist.")
+	}
+	enabled := flagOr(c.Body(), "enabled", guild.FirecallEnabled)
+	if err := s.store.SetFirecallEnabled(c.UserContext(), c.Params("guildID"), enabled); err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save the allowlist.")
+	}
 	roles, err := s.store.ListEscalationRoles(c.UserContext(), c.Params("guildID"))
 	if err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save the allowlist.")
 	}
-	return c.JSON(fiber.Map{"roles": roles})
+	return c.JSON(fiber.Map{"roles": roles, "enabled": enabled})
 }
 
 func (s *Server) escalations(c *fiber.Ctx) error {
@@ -479,6 +499,7 @@ func (s *Server) putGate(c *fiber.Ctx) error {
 	gate.ChannelID = existing.ChannelID
 	gate.MessageID = existing.MessageID
 	gate.Emoji = ""
+	gate.Active = flagOr(c.Body(), "active", existing.Active)
 	if err := s.store.SaveGate(c.UserContext(), gate); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save the application.")
 	}
@@ -506,6 +527,13 @@ func (s *Server) gatePanel(c *fiber.Ctx) error {
 	}
 	if err := s.requireBot(); err != nil {
 		return fail(c, fiber.StatusServiceUnavailable, err.Error())
+	}
+	gate, err := s.store.GetGate(c.UserContext(), c.Params("guildID"))
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not load the application.")
+	}
+	if !gate.Active {
+		return fail(c, fiber.StatusBadRequest, "Turn the server application on in the dashboard.")
 	}
 	if err := s.bot.PostGatePanel(c.Params("guildID"), body.ChannelID); err != nil {
 		return fail(c, fiber.StatusBadGateway, err.Error())
@@ -567,6 +595,11 @@ func (s *Server) putLogging(c *fiber.Ctx) error {
 	if !optionalID(cfg.ChannelID) {
 		return fail(c, fiber.StatusBadRequest, "Choose a log channel.")
 	}
+	existing, err := s.store.GetLogConfig(c.UserContext(), cfg.GuildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save logging.")
+	}
+	cfg.Enabled = flagOr(c.Body(), "enabled", existing.Enabled)
 	if err := s.store.SaveLogConfig(c.UserContext(), cfg); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save logging.")
 	}
@@ -740,6 +773,11 @@ func (s *Server) putConfessions(c *fiber.Ctx) error {
 	if err := domain.ValidateConfessionChannels(cfg.ReviewChannelID, cfg.ChannelID); err != nil {
 		return fail(c, fiber.StatusBadRequest, err.Error())
 	}
+	existing, err := s.store.GetConfessionConfig(c.UserContext(), cfg.GuildID)
+	if err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save confessions.")
+	}
+	cfg.Enabled = flagOr(c.Body(), "enabled", existing.Enabled)
 	if err := s.store.SaveConfessionConfig(c.UserContext(), cfg); err != nil {
 		return fail(c, fiber.StatusInternalServerError, "Could not save confessions.")
 	}
@@ -778,6 +816,7 @@ func (s *Server) putTickets(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusInternalServerError, "Could not save tickets.")
 	}
 	cfg.PanelMessageID = existing.PanelMessageID
+	cfg.Enabled = flagOr(c.Body(), "enabled", existing.Enabled)
 	if existing.PanelMessageID != "" && existing.PanelChannelID != cfg.PanelChannelID {
 		if s.bot != nil && s.bot.Ready() {
 			s.bot.DeleteChannelMessage(existing.PanelChannelID, existing.PanelMessageID)
@@ -1393,6 +1432,65 @@ func (s *Server) requireBot() error {
 		return errors.New("The bot is still connecting to Discord.")
 	}
 	return nil
+}
+
+func (s *Server) rejectIfAnnouncementsOff(c *fiber.Ctx) (bool, error) {
+	guild, err := s.store.GetGuild(c.UserContext(), c.Params("guildID"))
+	if err != nil {
+		return true, fail(c, fiber.StatusInternalServerError, "Could not load announcements.")
+	}
+	if !guild.AnnouncementsEnabled {
+		return true, fail(c, fiber.StatusBadRequest, "Turn announcements on in the dashboard.")
+	}
+	return false, nil
+}
+
+func (s *Server) putAnnouncementsEnabled(c *fiber.Ctx) error {
+	return s.putGuildFlag(c, s.store.SetAnnouncementsEnabled)
+}
+
+func (s *Server) putReactionsEnabled(c *fiber.Ctx) error {
+	return s.putGuildFlag(c, s.store.SetReactionsEnabled)
+}
+
+func (s *Server) putGuildFlag(c *fiber.Ctx, save func(context.Context, string, bool) error) error {
+	if !flagPresent(c.Body(), "enabled") {
+		return fail(c, fiber.StatusBadRequest, "Choose on or off.")
+	}
+	var body struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return fail(c, fiber.StatusBadRequest, "Could not read that request.")
+	}
+	if err := save(c.UserContext(), c.Params("guildID"), body.Enabled); err != nil {
+		return fail(c, fiber.StatusInternalServerError, "Could not save that setting.")
+	}
+	return c.JSON(fiber.Map{"enabled": body.Enabled})
+}
+
+func flagPresent(raw []byte, key string) bool {
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return false
+	}
+	value, ok := body[key]
+	return ok && len(value) > 0 && string(value) != "null"
+}
+
+func flagOr(raw []byte, key string, fallback bool) bool {
+	if !flagPresent(raw, key) {
+		return fallback
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return fallback
+	}
+	var on bool
+	if err := json.Unmarshal(body[key], &on); err != nil {
+		return fallback
+	}
+	return on
 }
 
 func optionalID(id string) bool {

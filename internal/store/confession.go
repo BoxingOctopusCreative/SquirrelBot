@@ -13,6 +13,7 @@ var ErrConfessionClosed = errors.New("that confession was already reviewed")
 
 type ConfessionConfig struct {
 	GuildID         string `json:"guildId"`
+	Enabled         bool   `json:"enabled"`
 	ReviewChannelID string `json:"reviewChannelId"`
 	ChannelID       string `json:"channelId"`
 }
@@ -35,24 +36,25 @@ type Confession struct {
 func (s *Store) GetConfessionConfig(ctx context.Context, guildID string) (ConfessionConfig, error) {
 	var cfg ConfessionConfig
 	err := s.pool.QueryRow(ctx, `
-		SELECT guild_id, review_channel_id, channel_id
+		SELECT guild_id, enabled, review_channel_id, channel_id
 		FROM confession_configs WHERE guild_id = $1`, guildID).Scan(
-		&cfg.GuildID, &cfg.ReviewChannelID, &cfg.ChannelID,
+		&cfg.GuildID, &cfg.Enabled, &cfg.ReviewChannelID, &cfg.ChannelID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ConfessionConfig{GuildID: guildID}, nil
+		return ConfessionConfig{GuildID: guildID, Enabled: true}, nil
 	}
 	return cfg, err
 }
 
 func (s *Store) SaveConfessionConfig(ctx context.Context, cfg ConfessionConfig) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO confession_configs (guild_id, review_channel_id, channel_id)
-		VALUES ($1, $2, $3)
+		INSERT INTO confession_configs (guild_id, enabled, review_channel_id, channel_id)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (guild_id) DO UPDATE SET
+			enabled = EXCLUDED.enabled,
 			review_channel_id = EXCLUDED.review_channel_id,
 			channel_id = EXCLUDED.channel_id`,
-		cfg.GuildID, cfg.ReviewChannelID, cfg.ChannelID,
+		cfg.GuildID, cfg.Enabled, cfg.ReviewChannelID, cfg.ChannelID,
 	)
 	return err
 }
