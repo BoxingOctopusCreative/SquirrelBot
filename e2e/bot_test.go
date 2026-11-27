@@ -328,6 +328,90 @@ func TestDeleteButtonRemovesClosedTicketChannel(t *testing.T) {
 	t.Fatalf("closed tickets %s", body)
 }
 
+func TestLevels(t *testing.T) {
+	status, body := call(t, http.MethodPut, "/api/guilds/"+harness.GuildID+"/levels", map[string]any{
+		"enabled": true, "xpMin": 20, "xpMax": 20, "rateCount": 1, "rateSeconds": 60,
+		"announce": "off", "announceMinLevel": 0, "announceMultiple": 0,
+		"ignoredChannelIds": []string{}, "ignoredRoleIds": []string{},
+		"rewards": []map[string]any{{"level": 1, "roleId": harness.AdminRoleID}},
+	}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
+	const userID = "444444444444444461"
+	stack.Discord.AddMember(harness.GuildID, discordmock.Member{
+		ID: userID, Username: "pebble", GlobalName: "Pebble", Nick: "Pebble",
+		Roles: []string{harness.MemberRoleID},
+	})
+	stack.Bot.HandleMessage(&discordgo.MessageCreate{Message: &discordgo.Message{
+		ID: "level-msg-1", GuildID: harness.GuildID, ChannelID: harness.GeneralChannelID,
+		Content: "hello canopy",
+		Author:  &discordgo.User{ID: userID, Username: "pebble", GlobalName: "Pebble"},
+		Member:  &discordgo.Member{Nick: "Pebble", Roles: []string{harness.MemberRoleID}},
+	}})
+
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/levels", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	board := asMap(t, body)["leaderboard"].([]any)
+	if len(board) != 1 {
+		t.Fatalf("leaderboard %s", body)
+	}
+	row := board[0].(map[string]any)
+	if row["userId"] != userID || row["xp"] != float64(20) || row["level"] != float64(0) || row["userName"] != "Pebble" {
+		t.Fatalf("standing %s", body)
+	}
+
+	interaction := levelAdd(t, userID, 80)
+	stack.Bot.HandleInteraction(interaction)
+	assertReply(t, interaction.ID, "Added 80 XP. Pebble is level 1 with 100 XP.")
+
+	member, ok := stack.Discord.Member(harness.GuildID, userID)
+	if !ok || !containsRole(member.Roles, harness.AdminRoleID) {
+		t.Fatalf("reward role missing: %+v", member.Roles)
+	}
+
+	status, body = call(t, http.MethodGet, "/api/guilds/"+harness.GuildID+"/levels?page=1", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	row = asMap(t, body)["leaderboard"].([]any)[0].(map[string]any)
+	if row["xp"] != float64(100) || row["level"] != float64(1) || row["rank"] != float64(1) {
+		t.Fatalf("after add %s", body)
+	}
+	events := asMap(t, body)["events"].([]any)
+	if len(events) != 1 || events[0].(map[string]any)["level"] != float64(1) {
+		t.Fatalf("events %s", body)
+	}
+}
+
+func levelAdd(t *testing.T, userID string, amount int) *discordgo.InteractionCreate {
+	t.Helper()
+	interaction := moderatorCommand(t, "level", harness.GeneralChannelID, &discordgo.ApplicationCommandInteractionDataOption{
+		Name: "add", Type: discordgo.ApplicationCommandOptionSubCommand,
+		Options: []*discordgo.ApplicationCommandInteractionDataOption{
+			userOption(userID),
+			intOption("amount", amount),
+		},
+	})
+	data := interaction.ApplicationCommandData()
+	data.Resolved = &discordgo.ApplicationCommandInteractionDataResolved{
+		Users: map[string]*discordgo.User{
+			userID: {ID: userID, Username: "pebble", GlobalName: "Pebble"},
+		},
+		Members: map[string]*discordgo.Member{
+			userID: {Nick: "Pebble", Roles: []string{harness.MemberRoleID}, User: &discordgo.User{ID: userID, GlobalName: "Pebble"}},
+		},
+	}
+	interaction.Data = data
+	return interaction
+}
+
+func containsRole(roles []string, id string) bool {
+	for _, role := range roles {
+		if role == id {
+			return true
+		}
+	}
+	return false
+}
+
 func moderatorCommand(t *testing.T, name, channelID string, options ...*discordgo.ApplicationCommandInteractionDataOption) *discordgo.InteractionCreate {
 	t.Helper()
 	return commandInteraction(t, name, channelID, &discordgo.Member{

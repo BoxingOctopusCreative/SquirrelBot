@@ -12,6 +12,8 @@ Reaction roles live in a channel the admin picks. SquirrelBot posts one message 
 
 Starboard reposts a message after enough reactions of the emoji an admin picks. The default emoji is ⭐ and the default limit is 3. A member's reaction on their own message does not count unless the server allows it. Images from NSFW channels stay out unless that is turned on. Channels on the ignore list are skipped, and the starboard channel itself is never posted.
 
+Levels track XP from chat. The default is 15 to 25 XP per message, and one grant per 60 seconds. Level 1 is 100 XP, level 2 is 255, and level 10 is 4,675, the same Mee6 curve Carl-bot uses. A server can blacklist channels and roles, turn on voice XP, post a level-up message, and grant a role at a level. Voice XP is once a minute, and only while two people are in the channel. Deafened members and the AFK channel do not earn it. `/rank` and `/leaderboard` are open to everyone. `/level` adds XP, sets a level, resets one member, backs up and clears the server, restores that backup, or shows the last 25 level ups. Manage Server is required for `/level`.
+
 Anonymous confessions start with `/confession`, or with the Submit a Confession button on an approved post. That button opens a form for the text and an optional file. The note goes to a review channel, tags the mod role, and shows Approve and Reject. An approved note is posted in the confessions channel without the author's name, with the same button for the next person. A review channel created from the dashboard is hidden from members. Moderators choose either channel in the dashboard, or with `/confession-review` and `/confession-channel`.
 
 Support tickets start from a panel posted in a channel the server chooses. Open a ticket asks for a subject and what the member needs, then opens a private channel under a category for that member and the support role. The mod role and admin role can manage tickets too. Staff claim a ticket, then close it with a reason. Closing saves a transcript in the dashboard, posts a copy in the transcript channel, and deletes the ticket channel ten seconds later. Reopen before then puts the ticket back. Put the bot's role above the support role.
@@ -47,6 +49,9 @@ Slash commands:
 | `/confession` | Send an anonymous confession for moderators to review |
 | `/confession-review` `/confession-channel` | Choose the review channel or the public confessions channel |
 | `/gate` | Show application status, or post the application message |
+| `/rank` | Show a member's level, XP, and leaderboard place |
+| `/leaderboard` | List members with the most XP |
+| `/level` | Add XP, set a level, reset scores, restore a backup, or show recent level ups |
 
 Prefix commands use the prefix from Welcome, default `!`. A saved command is a Lua 5.1 script. `reply` sends one message, and returning a string does the same when `reply` is not called. `liquid` fills `{{ author.name }}`, `{{ author.id }}`, `{{ author.display_name }}`, `{{ args }}`, `{{ guild.name }}`, and `{{ prefix }}`. `react` and `delete` act on the invoking message. `addRole` and `removeRole` only change roles selected for that command. Older commands that are plain text still send that text until you save them again.
 

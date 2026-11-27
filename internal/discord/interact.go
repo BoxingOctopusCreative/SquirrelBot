@@ -92,6 +92,12 @@ func (b *Bot) routeCommand(s *discordgo.Session, i *discordgo.InteractionCreate)
 		b.setConfessionBoard(s, i)
 	case "gate":
 		b.gateCommand(s, i)
+	case "rank":
+		b.rank(s, i)
+	case "leaderboard":
+		b.leaderboard(s, i)
+	case "level":
+		b.levelCommand(s, i)
 	default:
 		_ = respondEphemeral(s, i, "I don't know that command.")
 	}
@@ -140,6 +146,20 @@ func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content strin
 
 func respondEphemeral(s *discordgo.Session, i *discordgo.InteractionCreate, content string) error {
 	return respond(s, i, content, true)
+}
+
+func respondEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed, ephemeral bool) error {
+	data := &discordgo.InteractionResponseData{
+		Embeds:          []*discordgo.MessageEmbed{embed},
+		AllowedMentions: noMentions,
+	}
+	if ephemeral {
+		data.Flags = discordgo.MessageFlagsEphemeral
+	}
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: data,
+	})
 }
 
 func deferReply(s *discordgo.Session, i *discordgo.InteractionCreate, ephemeral bool) error {

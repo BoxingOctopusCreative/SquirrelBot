@@ -18,7 +18,7 @@
 	<p>The site does not use advertising cookies or a third-party analytics tool.</p>
 
 	<h2>Discord intents</h2>
-	<p>The bot asks Discord for the Message Content privileged intent, plus guild, member, moderation, message, and reaction intents. Message content is used for automod, prefix commands, starboard, and delete or edit logs. Member data is used for joins, leaves, roles, timeouts, and the server application. The bot only uses that data on servers where it is installed.</p>
+	<p>The bot asks Discord for the Message Content privileged intent, plus guild, member, moderation, message, reaction, and voice state intents. Message content is used for automod, prefix commands, starboard, and delete or edit logs. Member data is used for joins, leaves, roles, timeouts, and the server application. Voice state is used only to grant voice XP while that setting is on. The bot only uses that data on servers where it is installed.</p>
 
 	<h2>What the bot stores</h2>
 	<p>For each server that uses the bot, the operator's database can hold:</p>
@@ -31,15 +31,16 @@
 		<li>Confessions: the text, the author's Discord id and name, the reviewer, and whether it was approved or rejected.</li>
 		<li>Support tickets: the subject, the request, who opened it, who claimed it, who closed it, the reason, and a transcript of the ticket channel.</li>
 		<li>Custom commands staff save.</li>
+		<li>Levels: a member's Discord id, display name, and XP, plus the last 100 level ups. A server-wide reset keeps one backup of those scores until the next reset. Voice state is not saved.</li>
 	</ul>
 
 	<h2>What stays in Discord</h2>
-	<p>The bot can read message text in a server where it is installed. It uses that text for automod, prefix commands, starboard, and delete or edit logs. Those logs are posted to a channel the server chose. The message text is not copied into the database for that purpose.</p>
+	<p>The bot can read message text in a server where it is installed. It uses that text for automod, prefix commands, starboard, and delete or edit logs. Chatting can grant XP. The message text is not copied into the database for that purpose. Those logs are posted to a channel the server chose.</p>
 	<p>A support ticket is different. When a ticket is closed, the bot copies the messages from that ticket channel into a transcript. The channel is deleted ten seconds later. The transcript is saved so staff can read it after the channel is gone, and a copy can be posted in the transcript channel the server chose.</p>
 	<p>A confession file is read so the bot can post it in Discord. The file is not saved in the database. After it is posted, Discord hosts it. The public confession does not include the author's name. Moderators can still see the author on the review post.</p>
 
 	<h2>Who can see it</h2>
-	<p>The dashboard shows a server to people Discord says can manage that server, and to people who hold a dashboard role the server saved. Confession authors are visible to moderators. Everyone who can read the confessions channel can see an approved confession, without the author's name. A ticket transcript is visible to people who can open that server in the dashboard, to people who can read the ticket channel, and to people who can read the transcript channel. Discord receives what the bot posts, because the bot runs inside Discord.</p>
+	<p>The dashboard shows a server to people Discord says can manage that server, and to people who hold a dashboard role the server saved. Confession authors are visible to moderators. Everyone who can read the confessions channel can see an approved confession, without the author's name. A ticket transcript is visible to people who can open that server in the dashboard, to people who can read the ticket channel, and to people who can read the transcript channel. A member's level and the leaderboard are visible to people who can use slash commands in the server, and to people who can open that server in the dashboard. Discord receives what the bot posts, because the bot runs inside Discord.</p>
 
 	<h2>How it is used</h2>
 	<p>The information is used to run the dashboard, to carry out the moderation and server tools staff turned on, and to keep a record of those actions. It is not sold. It is not used for advertising. It is shared with Discord, with the staff of the server it belongs to, and when the law requires it.</p>
