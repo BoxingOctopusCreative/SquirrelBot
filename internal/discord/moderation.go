@@ -155,10 +155,10 @@ func (b *Bot) purge(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		editReply(s, i, discordFailure(err))
 		return
 	}
-	cutoff := time.Now().Add(-13 * 24 * time.Hour)
+	now := time.Now()
 	ids := make([]string, 0, len(messages))
 	for _, message := range messages {
-		if message.Timestamp.Before(cutoff) {
+		if domain.TooOldToBulkDelete(message.Timestamp, now) {
 			continue
 		}
 		ids = append(ids, message.ID)

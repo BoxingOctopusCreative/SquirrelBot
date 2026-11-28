@@ -83,6 +83,7 @@ test.describe('dashboard', () => {
 			['Server Application', 'Server Application'],
 			['Moderation Log', 'Moderation Log'],
 			['Automod', 'Automod'],
+			['Timed Channel Purge', 'Timed Channel Purge'],
 			['Logging', 'Logging'],
 			['Welcome', 'Welcome'],
 			['Reaction Roles', 'Reaction Roles'],
@@ -365,6 +366,34 @@ test.describe('dashboard', () => {
 		await expect(page.getByText('#1 escalate')).toBeVisible();
 		await expect(page.getByText('#2 deescalate')).toBeVisible();
 		await expect(page.getByText('Fern').first()).toBeVisible();
+	});
+
+	test('schedules a timed channel purge', async ({ page }) => {
+		await openGuild(page);
+		await page.getByRole('navigation', { name: 'Server sections' }).getByRole('link', { name: 'Timed Channel Purge' }).click();
+		await expect(page.getByRole('heading', { name: 'Timed Channel Purge', exact: true })).toBeVisible();
+		await page.getByLabel('Timed purge on').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByText('Saved. Timed purge updated.')).toBeVisible();
+		await page.getByLabel('Channel').selectOption({ label: '#general' });
+		await page.getByLabel('Interval').selectOption({ label: '1 hour' });
+		await page.getByRole('button', { name: 'Save Schedule' }).click();
+		await expect(page.getByText('Saved. Schedule updated.')).toBeVisible();
+		const row = page.locator('li').filter({ hasText: '#general' });
+		const createForm = page.locator('form').first();
+		await expect(row.getByText('1 hour')).toBeVisible();
+		await expect(page.getByText(/Deleted \d+ messages/)).toHaveCount(0);
+		await row.getByRole('button', { name: 'Edit' }).click();
+		await expect(createForm.getByLabel('Interval')).toHaveValue('1h');
+		await expect(createForm.locator('option:checked').first()).toHaveText('#general');
+		await row.getByLabel('Interval').selectOption({ label: '4 hours' });
+		await expect(createForm.getByLabel('Interval')).toHaveValue('1h');
+		await row.getByRole('button', { name: 'Update Schedule' }).click();
+		await expect(row.getByText('Saved. Schedule updated.')).toBeVisible();
+		await expect(row.getByText('4 hours')).toBeVisible();
+		await expect(createForm.getByLabel('Interval')).toHaveValue('1h');
+		await expect(createForm.locator('option:checked').first()).toHaveText('#general');
+		await expect(row.getByRole('button', { name: 'Remove' })).toBeVisible();
 	});
 
 	test('signs out', async ({ page }) => {

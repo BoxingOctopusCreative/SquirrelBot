@@ -110,6 +110,7 @@ type channelState struct {
 	name      string
 	kind      int
 	rateLimit int
+	forbidden bool
 }
 
 type messageState struct {
@@ -118,6 +119,8 @@ type messageState struct {
 	authorID  string
 	content   string
 	timestamp time.Time
+	bot       bool
+	pinned    bool
 }
 
 type interactionState struct {
@@ -225,13 +228,35 @@ func (s *Server) AddEmoji(guildID, id, name string, animated bool) {
 
 // AddMessage stores a message and returns its id.
 func (s *Server) AddMessage(channelID, authorID, content string) string {
+	return s.AddMessageAt(channelID, authorID, content, time.Now().UTC(), false, false)
+}
+
+// AddMessageAt stores a message with an explicit timestamp, bot flag, and pin.
+func (s *Server) AddMessageAt(channelID, authorID, content string, at time.Time, bot, pinned bool) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	id := s.allocID()
 	s.messages[id] = &messageState{
-		id: id, channelID: channelID, authorID: authorID, content: content, timestamp: time.Now().UTC(),
+		id: id, channelID: channelID, authorID: authorID, content: content,
+		timestamp: at.UTC(), bot: bot, pinned: pinned,
 	}
 	return id
+}
+
+// RemoveChannel drops a channel. Later message reads report it unknown.
+func (s *Server) RemoveChannel(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.channels, id)
+}
+
+// ForbidChannel makes message reads and deletes return a permissions error.
+func (s *Server) ForbidChannel(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if channel := s.channels[id]; channel != nil {
+		channel.forbidden = true
+	}
 }
 
 // Member returns a copy of a guild member.

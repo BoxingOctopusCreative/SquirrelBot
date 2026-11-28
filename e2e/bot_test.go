@@ -500,6 +500,158 @@ func labelModalEvent(t *testing.T, customID, channelID string, member *discordgo
 	return id, &discordgo.Event{Type: "INTERACTION_CREATE", RawData: raw}
 }
 
+func TestTimedPurgeRuns(t *testing.T) {
+	ctx := t.Context()
+	guild := "/api/guilds/" + harness.GuildID
+	status, body := call(t, http.MethodPut, guild+"/purges/enabled", map[string]any{"enabled": true}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+
+	channelID := "777777777777777796"
+	stack.Discord.AddChannel(harness.GuildID, channelID, "lobby", int(discordgo.ChannelTypeGuildText))
+	member := stack.Discord.AddMessage(channelID, harness.TargetUserID, "member")
+	botMessage := stack.Discord.AddMessageAt(channelID, harness.BotUserID, "bot", time.Now(), true, false)
+	pinned := stack.Discord.AddMessageAt(channelID, harness.TargetUserID, "pin", time.Now(), false, true)
+	old := stack.Discord.AddMessageAt(channelID, harness.TargetUserID, "old", time.Now().Add(-15*24*time.Hour), false, false)
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": channelID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, channelID); err != nil {
+		t.Fatal(err)
+	}
+	_, casesBefore := call(t, http.MethodGet, guild+"/cases", nil, stack.Cookie)
+	stack.Bot.RunDuePurges(ctx)
+	left := map[string]bool{}
+	for _, message := range stack.Discord.Messages(channelID) {
+		left[message.ID] = true
+	}
+	if left[member] || left[botMessage] || left[pinned] || !left[old] || len(left) != 1 {
+		t.Fatalf("messages after wipe %#v", left)
+	}
+	_, casesAfter := call(t, http.MethodGet, guild+"/cases", nil, stack.Cookie)
+	if string(casesBefore) != string(casesAfter) {
+		t.Fatalf("purge opened a case\nbefore %s\nafter %s", casesBefore, casesAfter)
+	}
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	row := scheduleRow(t, body, channelID)
+	if row["removed"] != float64(3) || row["skipped"] != float64(1) || row["error"] != "" {
+		t.Fatalf("result %s", body)
+	}
+
+	wideID := "777777777777777797"
+	stack.Discord.AddChannel(harness.GuildID, wideID, "wide", int(discordgo.ChannelTypeGuildText))
+	for i := 0; i < 150; i++ {
+		stack.Discord.AddMessage(wideID, harness.TargetUserID, fmt.Sprintf("m%d", i))
+	}
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": wideID, "preset": "4h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, wideID); err != nil {
+		t.Fatal(err)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if got := len(stack.Discord.Messages(wideID)); got != 0 {
+		t.Fatalf("wide channel left %d messages", got)
+	}
+
+	blockedID := "777777777777777798"
+	stack.Discord.AddChannel(harness.GuildID, blockedID, "blocked", int(discordgo.ChannelTypeGuildText))
+	kept := stack.Discord.AddMessage(blockedID, harness.TargetUserID, "stay")
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": blockedID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	stack.Discord.ForbidChannel(blockedID)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, blockedID); err != nil {
+		t.Fatal(err)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if len(stack.Discord.Messages(blockedID)) != 1 || stack.Discord.Messages(blockedID)[0].ID != kept {
+		t.Fatal("forbidden channel lost a message")
+	}
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if scheduleRow(t, body, blockedID)["error"] == "" {
+		t.Fatalf("missing failure %s", body)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if len(stack.Discord.Messages(blockedID)) != 1 {
+		t.Fatal("a second run deleted the forbidden channel")
+	}
+
+	goneID := "777777777777777799"
+	stack.Discord.AddChannel(harness.GuildID, goneID, "gone", int(discordgo.ChannelTypeGuildText))
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": goneID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	stack.Discord.RemoveChannel(goneID)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, goneID); err != nil {
+		t.Fatal(err)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if scheduleRow(t, body, goneID)["state"] != "missing" {
+		t.Fatalf("missing channel %s", body)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	if scheduleRow(t, body, goneID)["state"] != "missing" {
+		t.Fatalf("missing channel was claimed again %s", body)
+	}
+
+	firstID := "777777777777777800"
+	secondID := "777777777777777801"
+	stack.Discord.AddChannel(harness.GuildID, firstID, "first", int(discordgo.ChannelTypeGuildText))
+	stack.Discord.AddChannel(harness.GuildID, secondID, "second", int(discordgo.ChannelTypeGuildText))
+	stack.Discord.AddMessage(firstID, harness.TargetUserID, "one")
+	secondMessage := stack.Discord.AddMessage(secondID, harness.TargetUserID, "two")
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": firstID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": secondID, "preset": "4h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, firstID); err != nil {
+		t.Fatal(err)
+	}
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, secondID); err != nil {
+		t.Fatal(err)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if len(stack.Discord.Messages(firstID)) != 0 || len(stack.Discord.Messages(secondID)) != 1 {
+		t.Fatalf("first %d second %d", len(stack.Discord.Messages(firstID)), len(stack.Discord.Messages(secondID)))
+	}
+	status, body = call(t, http.MethodDelete, guild+"/purges/"+secondID, nil, stack.Cookie)
+	if status != http.StatusNoContent {
+		t.Fatalf("remove second %d %s", status, body)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if got := stack.Discord.Messages(secondID); len(got) != 1 || got[0].ID != secondMessage {
+		t.Fatal("removed schedule still wiped")
+	}
+
+	status, body = call(t, http.MethodPut, guild+"/purges/enabled", map[string]any{"enabled": false}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	pausedID := "777777777777777802"
+	stack.Discord.AddChannel(harness.GuildID, pausedID, "paused", int(discordgo.ChannelTypeGuildText))
+	stack.Discord.AddMessage(pausedID, harness.TargetUserID, "pause")
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": pausedID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if err := stack.MakePurgeDue(ctx, harness.GuildID, pausedID); err != nil {
+		t.Fatal(err)
+	}
+	stack.Bot.RunDuePurges(ctx)
+	if len(stack.Discord.Messages(pausedID)) != 1 {
+		t.Fatal("a paused schedule wiped a channel")
+	}
+}
+
+func scheduleRow(t *testing.T, body []byte, channelID string) map[string]any {
+	t.Helper()
+	for _, item := range asMap(t, body)["schedules"].([]any) {
+		row := item.(map[string]any)
+		if row["channelId"] == channelID {
+			return row
+		}
+	}
+	t.Fatalf("schedule %s missing from %s", channelID, body)
+	return nil
+}
+
 func assertReply(t *testing.T, interactionID, want string) {
 	t.Helper()
 	got, ok := stack.Discord.InteractionContent(interactionID)

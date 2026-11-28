@@ -41,6 +41,7 @@ type Guild struct {
 	FirecallEnabled      bool      `json:"firecallEnabled"`
 	AnnouncementsEnabled bool      `json:"announcementsEnabled"`
 	ReactionsEnabled     bool      `json:"reactionsEnabled"`
+	PurgeEnabled         bool      `json:"purgeEnabled"`
 	ReactionChannelID    string    `json:"reactionChannelId"`
 	ReactionMessageID    string    `json:"reactionMessageId"`
 	UpdatedAt            time.Time `json:"updatedAt"`
@@ -63,11 +64,11 @@ func (s *Store) GetGuild(ctx context.Context, id string) (Guild, error) {
 		SELECT id, name, icon, mod_log_channel_id, mod_role_id, admin_role_id,
 		       welcome_channel_id, welcome_message, leave_channel_id, leave_message,
 		       autorole_id, prefix, welcome_enabled, firecall_enabled, announcements_enabled,
-		       reactions_enabled, reaction_channel_id, reaction_message_id, updated_at
+		       reactions_enabled, purge_enabled, reaction_channel_id, reaction_message_id, updated_at
 		FROM guilds WHERE id = $1`, id).Scan(
 		&g.ID, &g.Name, &g.Icon, &g.ModLogChannelID, &g.ModRoleID, &g.AdminRoleID,
 		&g.WelcomeChannelID, &g.WelcomeMessage, &g.LeaveChannelID, &g.LeaveMessage, &g.AutoroleID, &g.Prefix,
-		&g.WelcomeEnabled, &g.FirecallEnabled, &g.AnnouncementsEnabled, &g.ReactionsEnabled,
+		&g.WelcomeEnabled, &g.FirecallEnabled, &g.AnnouncementsEnabled, &g.ReactionsEnabled, &g.PurgeEnabled,
 		&g.ReactionChannelID, &g.ReactionMessageID, &g.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {

@@ -28,6 +28,7 @@ export type Guild = {
 	firecallEnabled: boolean;
 	announcementsEnabled: boolean;
 	reactionsEnabled: boolean;
+	purgeEnabled: boolean;
 	reactionChannelId: string;
 	reactionMessageId: string;
 	updatedAt: string;
@@ -42,6 +43,18 @@ export type Counts = {
 };
 
 export type Channel = { id: string; name: string; type: number };
+
+export type ChannelPurge = {
+	channelId: string;
+	preset: string;
+	intervalSeconds: number;
+	state: 'paused' | 'scheduled' | 'running' | 'missing';
+	nextRunAt?: string | null;
+	lastRunAt?: string | null;
+	removed: number;
+	skipped: number;
+	error: string;
+};
 export type Role = { id: string; name: string; position: number; managed: boolean };
 
 export type Gate = {
