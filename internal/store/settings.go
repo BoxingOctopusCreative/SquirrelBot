@@ -377,6 +377,10 @@ func (s *Store) RecoverStuckWork(ctx context.Context) error {
 		SET status = 'expire_failed', end_reason = 'The bot restarted while removing the role.', ended_at = now()
 		WHERE status = 'expiring';
 		UPDATE gate_members SET status = 'pending', updated_at = now() WHERE status = 'kicking';
+		UPDATE channel_purges
+		SET status = 'scheduled', cursor_id = '', removed_count = 0, skipped_count = 0,
+		    next_run_at = now(), updated_at = now()
+		WHERE status = 'running';
 	`)
 	return err
 }

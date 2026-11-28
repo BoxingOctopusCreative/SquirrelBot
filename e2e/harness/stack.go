@@ -40,6 +40,7 @@ type Stack struct {
 	GuestCookie string
 	Bot         *discord.Bot
 	Discord     *discordmock.Server
+	pool        *pgxpool.Pool
 	close       func()
 }
 
@@ -144,6 +145,7 @@ func Start(ctx context.Context, opt Options) (*Stack, error) {
 	stack.GuestCookie = GuestSessionID
 	stack.Bot = bot
 	stack.Discord = fake
+	stack.pool = pool
 	var poolRef *pgxpool.Pool = pool
 	stack.close = func() {
 		_ = server.Shutdown()
@@ -154,6 +156,21 @@ func Start(ctx context.Context, opt Options) (*Stack, error) {
 		_ = dropDatabase(context.Background(), admin, dbName)
 	}
 	return stack, nil
+}
+
+// MakePurgeDue moves a saved schedule into the past so a test can run one wipe.
+func (s *Stack) MakePurgeDue(ctx context.Context, guildID, channelID string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE channel_purges
+		SET next_run_at = now() - interval '1 minute', status = 'scheduled', cursor_id = ''
+		WHERE guild_id = $1 AND channel_id = $2`, guildID, channelID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("no purge schedule")
+	}
+	return nil
 }
 
 // Close stops the API and drops the database.

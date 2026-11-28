@@ -32,6 +32,7 @@ Each row shows:
 - the last run time, removed count, and skipped count
 - the error text when it is non-empty
 - `That channel is gone.` when `state` is `missing`
+- an Edit button that opens an interval form inside that row. The channel and interval fields above stay as they are. Update posts the same `POST`. Cancel closes the row form
 - a Remove button that calls `DELETE` for that channel only
 
 A running wipe shows `Wipe in progress` and keeps the previous removed and skipped counts on screen.

@@ -23,6 +23,9 @@ func (s *Server) channelRoute(w http.ResponseWriter, r *http.Request, parts []st
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodGet {
+		if s.rejectChannel(w, channelID) {
+			return
+		}
 		writeJSON(w, http.StatusOK, s.channelMessages(channelID, r.URL.Query()))
 		return
 	}
@@ -31,6 +34,9 @@ func (s *Server) channelRoute(w http.ResponseWriter, r *http.Request, parts []st
 		return
 	}
 	if len(parts) == 3 && parts[2] == "bulk-delete" && r.Method == http.MethodPost {
+		if s.rejectChannel(w, channelID) {
+			return
+		}
 		s.bulkDelete(w, r, channelID)
 		return
 	}
@@ -130,6 +136,9 @@ func (s *Server) createMessage(w http.ResponseWriter, r *http.Request, channelID
 }
 
 func (s *Server) oneMessage(w http.ResponseWriter, r *http.Request, channelID, messageID string) {
+	if r.Method == http.MethodDelete && s.rejectChannel(w, channelID) {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	item := s.messages[messageID]
@@ -161,15 +170,47 @@ func (s *Server) bulkDelete(w http.ResponseWriter, r *http.Request, channelID st
 		Messages []string `json:"messages"`
 	}
 	_ = readJSON(r, &body)
+	cutoff := time.Now().Add(-14 * 24 * time.Hour)
 	s.mu.Lock()
+	tooOld := false
 	for _, id := range body.Messages {
 		item := s.messages[id]
-		if item != nil && item.channelID == channelID {
-			delete(s.messages, id)
+		if item != nil && item.channelID == channelID && item.timestamp.Before(cutoff) {
+			tooOld = true
+			break
+		}
+	}
+	if !tooOld {
+		for _, id := range body.Messages {
+			item := s.messages[id]
+			if item != nil && item.channelID == channelID {
+				delete(s.messages, id)
+			}
 		}
 	}
 	s.mu.Unlock()
+	if tooOld {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"message": "A message provided was too old to bulk delete.", "code": 50034})
+		return
+	}
 	writeJSON(w, http.StatusNoContent, nil)
+}
+
+func (s *Server) rejectChannel(w http.ResponseWriter, channelID string) bool {
+	s.mu.Lock()
+	channel := s.channels[channelID]
+	missing := channel == nil
+	forbidden := channel != nil && channel.forbidden
+	s.mu.Unlock()
+	if missing {
+		writeJSON(w, http.StatusNotFound, map[string]any{"message": "Unknown Channel", "code": 10003})
+		return true
+	}
+	if forbidden {
+		writeJSON(w, http.StatusForbidden, map[string]any{"message": "Missing Permissions", "code": 50013})
+		return true
+	}
+	return false
 }
 
 func (s *Server) channelMessages(channelID string, query url.Values) []any {
@@ -182,15 +223,20 @@ func (s *Server) channelMessages(channelID string, query url.Values) []any {
 	if limit > 100 {
 		limit = 100
 	}
+	before := query.Get("before")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	items := make([]*messageState, 0)
 	for _, item := range s.messages {
-		if item.channelID == channelID {
-			items = append(items, item)
+		if item.channelID != channelID {
+			continue
 		}
+		if before != "" && !snowflakeLess(item.id, before) {
+			continue
+		}
+		items = append(items, item)
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].id > items[j].id })
+	sort.Slice(items, func(i, j int) bool { return snowflakeLess(items[j].id, items[i].id) })
 	if len(items) > limit {
 		items = items[:limit]
 	}
@@ -236,12 +282,20 @@ func (c *channelState) json() map[string]any {
 	}
 }
 
+func snowflakeLess(a, b string) bool {
+	if len(a) != len(b) {
+		return len(a) < len(b)
+	}
+	return a < b
+}
+
 func (m *messageState) json() map[string]any {
 	return map[string]any{
 		"id": m.id, "channel_id": m.channelID, "content": m.content,
 		"timestamp": m.timestamp.Format(time.RFC3339Nano),
+		"pinned":    m.pinned,
 		"author": map[string]any{
-			"id": m.authorID, "username": "member", "bot": false,
+			"id": m.authorID, "username": "member", "bot": m.bot,
 		},
 	}
 }

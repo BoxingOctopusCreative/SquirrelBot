@@ -22,6 +22,7 @@ func (b *Bot) RunScheduler(ctx context.Context) {
 				continue
 			}
 			b.sendDueAnnouncements(ctx)
+			b.RunDuePurges(ctx)
 			b.awardVoiceXP(ctx)
 			b.expireEscalations(ctx)
 			b.warnGate(ctx)

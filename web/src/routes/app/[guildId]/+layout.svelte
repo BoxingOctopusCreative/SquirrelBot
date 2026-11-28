@@ -23,6 +23,7 @@
 			items: [
 				['/cases', 'Moderation Log'],
 				['/automod', 'Automod'],
+				['/purges', 'Timed Channel Purge'],
 				['/logging', 'Logging'],
 				['/escalations', 'Admin Firecall Access']
 			]

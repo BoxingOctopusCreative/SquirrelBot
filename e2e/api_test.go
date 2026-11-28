@@ -621,6 +621,110 @@ func TestDashboardJourney(t *testing.T) {
 	}
 }
 
+func TestTimedPurgeAPI(t *testing.T) {
+	guild := "/api/guilds/" + harness.GuildID
+	channelID := "777777777777777793"
+	otherID := "777777777777777794"
+	voiceID := "777777777777777795"
+	stack.Discord.AddChannel(harness.GuildID, channelID, "timed", 0)
+	stack.Discord.AddChannel(harness.GuildID, otherID, "memes", 0)
+	stack.Discord.AddChannel(harness.GuildID, voiceID, "talk", 2)
+	stack.Discord.AddMessage(channelID, harness.TargetUserID, "keep me")
+
+	status, body := call(t, http.MethodPut, guild+"/purges/enabled", map[string]any{"enabled": false}, stack.GuestCookie)
+	if status != http.StatusForbidden {
+		t.Fatalf("guest toggle %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": channelID, "preset": "1h"}, stack.GuestCookie)
+	if status != http.StatusForbidden {
+		t.Fatalf("guest save %d %s", status, body)
+	}
+
+	status, body = call(t, http.MethodPut, guild+"/purges/enabled", map[string]any{"enabled": false}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["enabled"] != false {
+		t.Fatalf("enabled %s", body)
+	}
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": channelID, "preset": "1h"}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	saved := asMap(t, body)
+	if saved["preset"] != "1h" || saved["intervalSeconds"] != float64(3600) || saved["state"] != "paused" || saved["nextRunAt"] != nil {
+		t.Fatalf("paused schedule %s", body)
+	}
+	if len(stack.Discord.Messages(channelID)) != 1 {
+		t.Fatal("saving a schedule deleted a message")
+	}
+
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": channelID, "minutes": 10}, stack.Cookie)
+	if status != http.StatusBadRequest {
+		t.Fatalf("10 minutes %d %s", status, body)
+	}
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": channelID, "minutes": 44640}, stack.Cookie)
+	if status != http.StatusBadRequest {
+		t.Fatalf("31 days %d %s", status, body)
+	}
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["schedules"].([]any)[0].(map[string]any)["preset"] != "1h" {
+		t.Fatalf("rejected minute values changed the schedule %s", body)
+	}
+
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": otherID, "minutes": 90}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["preset"] != "" || asMap(t, body)["intervalSeconds"] != float64(5400) {
+		t.Fatalf("90 minutes %s", body)
+	}
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": otherID, "minutes": 60}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if asMap(t, body)["preset"] != "" || asMap(t, body)["intervalSeconds"] != float64(3600) {
+		t.Fatalf("60 minutes %s", body)
+	}
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	listed := asMap(t, body)["schedules"].([]any)
+	if len(listed) != 2 || listed[0].(map[string]any)["preset"] != "1h" {
+		t.Fatalf("schedules %s", body)
+	}
+
+	status, body = call(t, http.MethodPost, guild+"/purges", map[string]any{"channelId": voiceID, "preset": "1h"}, stack.Cookie)
+	if status != http.StatusBadRequest || !strings.Contains(string(body), "Choose a text channel.") {
+		t.Fatalf("voice %d %s", status, body)
+	}
+
+	status, body = call(t, http.MethodDelete, guild+"/purges/"+otherID, nil, stack.GuestCookie)
+	if status != http.StatusForbidden {
+		t.Fatalf("guest delete %d %s", status, body)
+	}
+	status, body = call(t, http.MethodDelete, guild+"/purges/"+otherID, nil, stack.Cookie)
+	if status != http.StatusNoContent {
+		t.Fatalf("delete %d %s", status, body)
+	}
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	if len(asMap(t, body)["schedules"].([]any)) != 1 {
+		t.Fatalf("after delete %s", body)
+	}
+
+	status, body = call(t, http.MethodPut, guild+"/purges/enabled", map[string]any{"enabled": true}, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	status, body = call(t, http.MethodGet, guild+"/purges", nil, stack.Cookie)
+	must(t, status, body, http.StatusOK)
+	row := asMap(t, body)["schedules"].([]any)[0].(map[string]any)
+	if row["state"] != "scheduled" || row["nextRunAt"] == nil {
+		t.Fatalf("enabled schedule %s", body)
+	}
+	next, err := time.Parse(time.RFC3339Nano, row["nextRunAt"].(string))
+	if err != nil {
+		next, err = time.Parse(time.RFC3339, row["nextRunAt"].(string))
+	}
+	if err != nil || next.Before(time.Now().Add(50*time.Minute)) || next.After(time.Now().Add(70*time.Minute)) {
+		t.Fatalf("next run %v %s", err, body)
+	}
+	if len(stack.Discord.Messages(channelID)) != 1 {
+		t.Fatal("turning timed purge on deleted a message")
+	}
+}
+
 func putProfile(t *testing.T, nick string) (int, []byte) {
 	t.Helper()
 	var buf bytes.Buffer
